@@ -1,16 +1,16 @@
-﻿using ArmorPicker.Attributes;
-using ArmorPicker.Enums;
-using ArmorPicker.Extensions;
-using ArmorPicker.Models;
-using ArmorPicker.Services;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using ArmorOptimizer.Attributes;
+using ArmorOptimizer.Enums;
+using ArmorOptimizer.Extensions;
+using ArmorOptimizer.Models;
+using ArmorOptimizer.Services;
 
-namespace ArmorPicker.Forms
+namespace ArmorOptimizer.Forms
 {
     public partial class ArmorPickerForm : Form
     {

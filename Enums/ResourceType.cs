@@ -1,4 +1,4 @@
-﻿namespace ArmorPicker.Enums
+﻿namespace ArmorOptimizer.Enums
 {
     public enum ResourceType
     {

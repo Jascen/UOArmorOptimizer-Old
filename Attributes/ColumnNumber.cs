@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ArmorPicker.Attributes
+namespace ArmorOptimizer.Attributes
 {
     public sealed class ColumnNumber : Attribute
     {

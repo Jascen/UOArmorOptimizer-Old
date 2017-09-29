@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ArmorPicker.Models
+namespace ArmorOptimizer.Models
 {
     public class SuitEvaluatorService
     {

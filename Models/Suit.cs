@@ -1,4 +1,4 @@
-﻿namespace ArmorPicker.Models
+﻿namespace ArmorOptimizer.Models
 {
     public class Suit
     {

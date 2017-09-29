@@ -1,6 +1,6 @@
-﻿using ArmorPicker.Models;
+﻿using ArmorOptimizer.Models;
 
-namespace ArmorPicker.Extensions
+namespace ArmorOptimizer.Extensions
 {
     public static class SuitExtensions
     {

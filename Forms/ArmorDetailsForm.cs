@@ -1,8 +1,8 @@
-﻿using ArmorPicker.Enums;
-using ArmorPicker.Models;
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
+using ArmorOptimizer.Enums;
+using ArmorOptimizer.Models;
 
-namespace ArmorPicker.Forms
+namespace ArmorOptimizer.Forms
 {
     public partial class ArmorDetailsForm : Form
     {

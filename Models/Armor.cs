@@ -1,8 +1,8 @@
-﻿using ArmorPicker.Attributes;
-using ArmorPicker.Enums;
-using System;
+﻿using System;
+using ArmorOptimizer.Attributes;
+using ArmorOptimizer.Enums;
 
-namespace ArmorPicker.Models
+namespace ArmorOptimizer.Models
 {
     public class Armor
     {

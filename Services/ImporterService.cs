@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace ArmorPicker.Services
+namespace ArmorOptimizer.Services
 {
     public class ImporterService
     {

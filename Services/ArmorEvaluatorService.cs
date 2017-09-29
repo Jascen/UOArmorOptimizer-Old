@@ -1,7 +1,7 @@
-﻿using ArmorPicker.Models;
-using System;
+﻿using System;
+using ArmorOptimizer.Models;
 
-namespace ArmorPicker.Services
+namespace ArmorOptimizer.Services
 {
     public class ArmorEvaluatorService
     {

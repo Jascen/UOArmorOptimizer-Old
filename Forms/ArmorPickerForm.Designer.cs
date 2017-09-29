@@ -1,4 +1,4 @@
-﻿namespace ArmorPicker.Forms
+﻿namespace ArmorOptimizer.Forms
 {
     partial class ArmorPickerForm
     {
