@@ -1,6 +1,7 @@
-﻿using System;
+﻿using ArmorOptimizer.Models;
+using System;
 
-namespace ArmorOptimizer.Models
+namespace ArmorOptimizer.Services
 {
     public class SuitEvaluatorService
     {
@@ -10,11 +11,11 @@ namespace ArmorOptimizer.Models
 
             var currentResists = suit.CurrentResists;
             var maxSuitResists = suit.MaxResists;
-            var physicalDeficit = maxSuitResists.PhysicalResist - currentResists.PhysicalResist;
-            var fireDeficit = maxSuitResists.FireResist - currentResists.FireResist;
-            var coldDeficit = maxSuitResists.ColdResist - currentResists.ColdResist;
-            var poisonDeficit = maxSuitResists.PoisonResist - currentResists.PoisonResist;
-            var energyDeficit = maxSuitResists.EnergyResist - currentResists.EnergyResist;
+            var physicalDeficit = maxSuitResists.Physical - currentResists.Physical;
+            var fireDeficit = maxSuitResists.Fire - currentResists.Fire;
+            var coldDeficit = maxSuitResists.Cold - currentResists.Cold;
+            var poisonDeficit = maxSuitResists.Poison - currentResists.Poison;
+            var energyDeficit = maxSuitResists.Energy - currentResists.Energy;
 
             PhysicalLowest = physicalDeficit >= fireDeficit && physicalDeficit >= coldDeficit && physicalDeficit >= poisonDeficit && physicalDeficit >= energyDeficit;
             FireLowest = fireDeficit >= physicalDeficit && fireDeficit >= coldDeficit && fireDeficit >= poisonDeficit && fireDeficit >= energyDeficit;

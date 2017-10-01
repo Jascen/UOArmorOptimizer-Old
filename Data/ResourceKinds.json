@@ -1,0 +1,32 @@
+[
+	{
+		"BonusResistConfigurationId": 4,
+		"Color": 2207,
+		"Id": 1,
+		"Name": "Verite"
+	},
+	{
+		"BonusResistConfigurationId": 3,
+		"Color": 2129,
+		"Id": 2,
+		"Name": "Barbed"
+	},
+	{
+		"BonusResistConfigurationId": 5,
+		"Color": -1,
+		"Id": 3,
+		"Name": "Spined"
+	},
+	{
+		"BonusResistConfigurationId": 6,
+		"Color": -1,
+		"Id": 4,
+		"Name": "Oak"
+	},
+	{
+		"BonusResistConfigurationId": 7,
+		"Color": -1,
+		"Id": 5,
+		"Name": "Heartwood"
+	}
+]

@@ -37,6 +37,9 @@
     <ApplicationIcon>if_shield and swords_47412.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.10.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -50,6 +53,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Extensions\IEnumerableExtensions.cs" />
+    <Compile Include="Extensions\ResistsExtensions.cs" />
     <Compile Include="Forms\ArmorDetailsForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -63,15 +68,27 @@
       <DependentUpon>ArmorPickerForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Attributes\ColumnNumber.cs" />
-    <Compile Include="Enums\ResourceType.cs" />
     <Compile Include="Enums\SlotTypes.cs" />
     <Compile Include="Extensions\ArmorExtensions.cs" />
     <Compile Include="Extensions\SuitExtensions.cs" />
+    <Compile Include="Forms\ConfigurationForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\ConfigurationForm.Designer.cs">
+      <DependentUpon>ConfigurationForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Models\Armor.cs" />
+    <Compile Include="Models\ArmorItem.cs" />
+    <Compile Include="Models\ArmorRecord.cs" />
     <Compile Include="Models\Candidate.cs" />
     <Compile Include="Models\ArmorCandidate.cs" />
+    <Compile Include="Models\EasyUoRecord.cs" />
+    <Compile Include="Models\ResistConfiguration.cs" />
+    <Compile Include="Models\Resists.cs" />
+    <Compile Include="Models\Resource.cs" />
+    <Compile Include="Models\ResourceRecord.cs" />
     <Compile Include="Models\Suit.cs" />
-    <Compile Include="Models\SuitEvaluatorService.cs" />
+    <Compile Include="Services\SuitEvaluatorService.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\ArmorEvaluatorService.cs" />
@@ -81,6 +98,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\ArmorPickerForm.resx">
       <DependentUpon>ArmorPickerForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\ConfigurationForm.resx">
+      <DependentUpon>ConfigurationForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -92,6 +112,14 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
+    <None Include="Data\Arms.json" />
+    <None Include="Data\Chests.json" />
+    <None Include="Data\Gloves.json" />
+    <None Include="Data\Helms.json" />
+    <None Include="Data\Legs.json" />
+    <None Include="Data\ResistConfigurations.json" />
+    <None Include="Data\ResourceKinds.json" />
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -108,7 +136,13 @@
   <ItemGroup>
     <Content Include="if_shield and swords_47412.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="EasyUO\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>xcopy /E /Y "$(ProjectDir)Data" "Data\"</PostBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

@@ -1,0 +1,58 @@
+[
+	{
+		"Cold": 2,
+		"Energy": 2,
+		"Fire": 2,
+		"Id": 1,
+		"Physical": 7,
+		"Poison": 2
+	},
+	{
+		"Cold": 2,
+		"Energy": 2,
+		"Fire": 3,
+		"Id": 2,
+		"Physical": 5,
+		"Poison": 3
+	},
+	{
+		"Cold": 2,
+		"Energy": 4,
+		"Fire": 1,
+		"Id": 3,
+		"Physical": 2,
+		"Poison": 3
+	},
+	{
+		"Cold": 2,
+		"Energy": 1,
+		"Fire": 3,
+		"Id": 4,
+		"Physical": 3,
+		"Poison": 3
+	},
+	{
+		"Cold": 0,
+		"Energy": 0,
+		"Fire": 0,
+		"Id": 5,
+		"Physical": 5,
+		"Poison": 0
+	},
+	{
+		"Cold": 0,
+		"Energy": 3,
+		"Fire": 3,
+		"Id": 6,
+		"Physical": 1,
+		"Poison": 2
+	},
+	{
+		"Cold": 2,
+		"Energy": 2,
+		"Fire": 3,
+		"Id": 7,
+		"Physical": 0,
+		"Poison": 7
+	}
+]
