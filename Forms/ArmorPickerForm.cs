@@ -232,14 +232,70 @@ namespace ArmorOptimizer.Forms
             {
                 var resistConfigurations = _resistConfigurations.Select(c => c.Value).ToEnumeratedList();
                 var resourceRecords = _resourceRecords;
-                var configurationEditor = new ConfigurationEditor(resistConfigurations, resourceRecords);
+                var armorTypes = _knownItemTypes.SelectMany(t => t.Value);
+                var configurationEditor = new ConfigurationEditor(resistConfigurations, resourceRecords, armorTypes);
                 var result = configurationEditor.ShowDialog();
                 if (result != DialogResult.OK) return;
 
                 var newResists = JsonConvert.SerializeObject(configurationEditor.ResistConfigurations, Formatting.Indented);
                 File.WriteAllText(ResistConfigurationFile, newResists);
+                _resistConfigurations = configurationEditor.ResistConfigurations.ToDictionary(record => record.Id);
+
                 var newResources = JsonConvert.SerializeObject(configurationEditor.Resources, Formatting.Indented);
                 File.WriteAllText(ResourceKindFile, newResources);
+                _resourceRecords = configurationEditor.Resources;
+
+                var helmRecords = new List<ArmorRecord>();
+                var chestRecords = new List<ArmorRecord>();
+                var armRecords = new List<ArmorRecord>();
+                var gloveRecords = new List<ArmorRecord>();
+                var legRecords = new List<ArmorRecord>();
+                var combinedTypes = configurationEditor.ArmorTypes;
+                foreach (var armorType in combinedTypes)
+                {
+                    switch (armorType.Slot)
+                    {
+                        case SlotTypes.Helm:
+                            helmRecords.Add(armorType);
+                            break;
+
+                        case SlotTypes.Chest:
+                            chestRecords.Add(armorType);
+                            break;
+
+                        case SlotTypes.Arms:
+                            armRecords.Add(armorType);
+                            break;
+
+                        case SlotTypes.Gloves:
+                            gloveRecords.Add(armorType);
+                            break;
+
+                        case SlotTypes.Legs:
+                            legRecords.Add(armorType);
+                            break;
+
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                }
+
+                var helmRecordData = JsonConvert.SerializeObject(helmRecords, Formatting.Indented);
+                File.WriteAllText(HelmFile, helmRecordData);
+                var chestRecordData = JsonConvert.SerializeObject(chestRecords, Formatting.Indented);
+                File.WriteAllText(ChestFile, chestRecordData);
+                var armRecordData = JsonConvert.SerializeObject(armRecords, Formatting.Indented);
+                File.WriteAllText(ArmsFile, armRecordData);
+                var gloveRecordData = JsonConvert.SerializeObject(gloveRecords, Formatting.Indented);
+                File.WriteAllText(GlovesFile, gloveRecordData);
+                var legRecordData = JsonConvert.SerializeObject(legRecords, Formatting.Indented);
+                File.WriteAllText(LegsFile, legRecordData);
+
+                _knownItemTypes.Clear();
+                foreach (var itemType in combinedTypes.GroupBy(r => r.Type))
+                {
+                    _knownItemTypes.Add(itemType.Key, itemType.ToEnumeratedList());
+                }
             }
             catch (Exception exception)
             {
