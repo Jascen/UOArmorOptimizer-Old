@@ -1,20 +1,19 @@
-﻿using ArmorPicker.Models;
+﻿using ArmorOptimizer.Models;
 
-namespace ArmorPicker.Extensions
+namespace ArmorOptimizer.Extensions
 {
     public static class SuitExtensions
     {
         public static void UpdateCurrentResists(this Suit suit)
         {
-            var currentResists = new Armor
+            suit.CurrentResists = new Resists
             {
-                PhysicalResist = suit.Helm.PhysicalResist + suit.Chest.PhysicalResist + suit.Arms.PhysicalResist + suit.Gloves.PhysicalResist + suit.Legs.PhysicalResist + suit.Misc.PhysicalResist,
-                FireResist = suit.Helm.FireResist + suit.Chest.FireResist + suit.Arms.FireResist + suit.Gloves.FireResist + suit.Legs.FireResist + suit.Misc.FireResist,
-                ColdResist = suit.Helm.ColdResist + suit.Chest.ColdResist + suit.Arms.ColdResist + suit.Gloves.ColdResist + suit.Legs.ColdResist + suit.Misc.ColdResist,
-                PoisonResist = suit.Helm.PoisonResist + suit.Chest.PoisonResist + suit.Arms.PoisonResist + suit.Gloves.PoisonResist + suit.Legs.PoisonResist + suit.Misc.PoisonResist,
-                EnergyResist = suit.Helm.EnergyResist + suit.Chest.EnergyResist + suit.Arms.EnergyResist + suit.Gloves.EnergyResist + suit.Legs.EnergyResist + suit.Misc.EnergyResist,
+                Physical = suit.Helm.CurrentResists.Physical + suit.Chest.CurrentResists.Physical + suit.Arms.CurrentResists.Physical + suit.Gloves.CurrentResists.Physical + suit.Legs.CurrentResists.Physical + suit.Misc.CurrentResists.Physical,
+                Fire = suit.Helm.CurrentResists.Fire + suit.Chest.CurrentResists.Fire + suit.Arms.CurrentResists.Fire + suit.Gloves.CurrentResists.Fire + suit.Legs.CurrentResists.Fire + suit.Misc.CurrentResists.Fire,
+                Cold = suit.Helm.CurrentResists.Cold + suit.Chest.CurrentResists.Cold + suit.Arms.CurrentResists.Cold + suit.Gloves.CurrentResists.Cold + suit.Legs.CurrentResists.Cold + suit.Misc.CurrentResists.Cold,
+                Poison = suit.Helm.CurrentResists.Poison + suit.Chest.CurrentResists.Poison + suit.Arms.CurrentResists.Poison + suit.Gloves.CurrentResists.Poison + suit.Legs.CurrentResists.Poison + suit.Misc.CurrentResists.Poison,
+                Energy = suit.Helm.CurrentResists.Energy + suit.Chest.CurrentResists.Energy + suit.Arms.CurrentResists.Energy + suit.Gloves.CurrentResists.Energy + suit.Legs.CurrentResists.Energy + suit.Misc.CurrentResists.Energy,
             };
-            suit.CurrentResists = currentResists;
         }
     }
 }

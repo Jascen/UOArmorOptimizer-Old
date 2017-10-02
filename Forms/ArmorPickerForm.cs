@@ -1,20 +1,23 @@
-﻿using ArmorPicker.Attributes;
-using ArmorPicker.Enums;
-using ArmorPicker.Extensions;
-using ArmorPicker.Models;
-using ArmorPicker.Services;
+﻿using ArmorOptimizer.Attributes;
+using ArmorOptimizer.Enums;
+using ArmorOptimizer.Extensions;
+using ArmorOptimizer.Models;
+using ArmorOptimizer.Services;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
-namespace ArmorPicker.Forms
+namespace ArmorOptimizer.Forms
 {
     public partial class ArmorPickerForm : Form
     {
         private readonly ArmorDetailsForm _armorDetailsForm = new ArmorDetailsForm();
+        private readonly ImporterService _importerService = new ImporterService();
         private List<Armor> _armorPieces;
 
         public ArmorPickerForm()
@@ -22,202 +25,54 @@ namespace ArmorPicker.Forms
             InitializeComponent();
         }
 
+        #region Data Files
+
+        private const string ArmsFile = "Data/Arms.json";
+        private const string ChestFile = "Data/Chests.json";
+        private const string GlovesFile = "Data/Gloves.json";
+        private const string HelmFile = "Data/Helms.json";
+        private const string LegsFile = "Data/Legs.json";
+        private const string ResistConfigurationFile = "Data/ResistConfigurations.json";
+        private const string ResourceKindFile = "Data/ResourceKinds.json";
+
+        #endregion Data Files
+
         #region UI
 
-        private Armor _selectedArms;
-        private Armor _selectedChest;
-        private Armor _selectedGloves;
-        private Armor _selectedHelm;
-        private Armor _selectedLegs;
-        private bool ApplyArmsBonus => cb_ApplyBonusArms.Checked;
-        private bool ApplyChestBonus => cb_ApplyBonusChest.Checked;
-        private bool ApplyGlovesBonus => cb_ApplyBonusGloves.Checked;
-        private bool ApplyHelmBonus => cb_ApplyBonusHelm.Checked;
-        private bool ApplyLegsBonus => cb_ApplyBonusLegs.Checked;
+        private Dictionary<string, IList<ArmorRecord>> _knownItemTypes;
+        private int _maxImbues = 2;
+        private int _maxIterations = 1000;
+        private int _maxResistBonus = 13;
+        private Dictionary<int, ResistConfiguration> _resistConfigurations;
+        private IList<ResourceRecord> _resourceRecords;
+        private IList<Resource> _resources;
+        private IList<Armor> _selectedArmor;
         private string FileToImport => tb_FileToImport.Text;
-        private bool FindArms => cb_FindArms.Checked;
-        private bool FindChest => cb_FindChest.Checked;
-        private bool FindGloves => cb_FindGloves.Checked;
-        private bool FindHelm => cb_FindHelm.Checked;
-        private bool FindLegs => cb_FindLegs.Checked;
-        private int MaxImbues => (int)num_MaxImbues.Value;
-        private int MaxIterations => (int)num_MaxIterations.Value;
-        private ResourceType SelectedArmsResourceType => (ResourceType)cbb_ArmsResourceType.SelectedItem;
-        private ResourceType SelectedChestResourceType => (ResourceType)cbb_ChestResourceType.SelectedItem;
-        private ResourceType SelectedGlovesResourceType => (ResourceType)cbb_GlovesResourceType.SelectedItem;
-        private ResourceType SelectedHelmResourceType => (ResourceType)cbb_HelmResourceType.SelectedItem;
-        private ResourceType SelectedLegsResourceType => (ResourceType)cbb_LegsResourceType.SelectedItem;
+        private int GoalCold => (int)num_GoalCold.Value;
+        private int GoalEnergy => (int)num_GoalEnergy.Value;
+        private int GoalFire => (int)num_GoalFire.Value;
+        private int GoalPhysical => (int)num_GoalPhysical.Value;
+        private int GoalPoison => (int)num_GoalPoison.Value;
+        private Armor SelectedArms => _selectedArmor.FirstOrDefault(r => r.Slot == SlotTypes.Arms);
+        private Resource SelectedArmsResource => (Resource)cbb_ArmsResourceType.SelectedItem;
+        private Armor SelectedChest => _selectedArmor.FirstOrDefault(r => r.Slot == SlotTypes.Chest);
+        private Resource SelectedChestResource => (Resource)cbb_ChestResourceType.SelectedItem;
+        private Armor SelectedGloves => _selectedArmor.FirstOrDefault(r => r.Slot == SlotTypes.Gloves);
+        private Resource SelectedGlovesResource => (Resource)cbb_GlovesResourceType.SelectedItem;
+        private Armor SelectedHelm => _selectedArmor.FirstOrDefault(r => r.Slot == SlotTypes.Helm);
+        private Resource SelectedHelmResource => (Resource)cbb_HelmResourceType.SelectedItem;
+        private Armor SelectedLegs => _selectedArmor.FirstOrDefault(r => r.Slot == SlotTypes.Legs);
+        private Resource SelectedLegsResource => (Resource)cbb_LegsResourceType.SelectedItem;
+        private Armor SelectedMisc => _selectedArmor.FirstOrDefault(r => r.Slot == SlotTypes.Unknown);
 
-        public Suit GetSuitFromUi()
+        private void PushSuitToUi(Suit suit)
         {
-            var maxResists = new Armor
-            {
-                PhysicalResist = (int)num_GoalPhysical.Value,
-                FireResist = (int)num_GoalFire.Value,
-                ColdResist = (int)num_GoalCold.Value,
-                PoisonResist = (int)num_GoalPoison.Value,
-                EnergyResist = (int)num_GoalEnergy.Value,
-            };
-            var suit = new Suit
-            {
-                MaxResists = maxResists,
-                Misc = new Armor
-                {
-                    PhysicalResist = (int)num_MiscPhysical.Value,
-                    FireResist = (int)num_MiscFire.Value,
-                    ColdResist = (int)num_MiscCold.Value,
-                    PoisonResist = (int)num_MiscPoison.Value,
-                    EnergyResist = (int)num_MiscEnergy.Value,
-                },
-            };
-            suit.Helm = FindHelm
-                ? new Armor()
-                : new Armor
-                {
-                    Id = _selectedHelm?.Id ?? "",
-                    Slot = _selectedHelm?.Slot ?? SlotTypes.Helm,
-                    PhysicalResist = _selectedHelm?.PhysicalResist ?? 0,
-                    FireResist = _selectedHelm?.FireResist ?? 0,
-                    ColdResist = _selectedHelm?.ColdResist ?? 0,
-                    PoisonResist = _selectedHelm?.PoisonResist ?? 0,
-                    EnergyResist = _selectedHelm?.EnergyResist ?? 0,
-                    ImbueCount = _selectedHelm?.ImbueCount ?? 0,
-                    LostResistPoints = _selectedHelm?.LostResistPoints ?? 0,
-                };
-            suit.Chest = FindChest
-                ? new Armor()
-                : new Armor
-                {
-                    Id = _selectedChest?.Id ?? "",
-                    Slot = _selectedChest?.Slot ?? SlotTypes.Helm,
-                    PhysicalResist = _selectedChest?.PhysicalResist ?? 0,
-                    FireResist = _selectedChest?.FireResist ?? 0,
-                    ColdResist = _selectedChest?.ColdResist ?? 0,
-                    PoisonResist = _selectedChest?.PoisonResist ?? 0,
-                    EnergyResist = _selectedChest?.EnergyResist ?? 0,
-                    ImbueCount = _selectedChest?.ImbueCount ?? 0,
-                    LostResistPoints = _selectedChest?.LostResistPoints ?? 0,
-                };
-            suit.Arms = FindArms
-                ? new Armor()
-                : new Armor
-                {
-                    Id = _selectedArms?.Id ?? "",
-                    Slot = _selectedArms?.Slot ?? SlotTypes.Helm,
-                    PhysicalResist = _selectedArms?.PhysicalResist ?? 0,
-                    FireResist = _selectedArms?.FireResist ?? 0,
-                    ColdResist = _selectedArms?.ColdResist ?? 0,
-                    PoisonResist = _selectedArms?.PoisonResist ?? 0,
-                    EnergyResist = _selectedArms?.EnergyResist ?? 0,
-                    ImbueCount = _selectedArms?.ImbueCount ?? 0,
-                    LostResistPoints = _selectedArms?.LostResistPoints ?? 0,
-                };
-            suit.Gloves = FindGloves
-                ? new Armor()
-                : new Armor
-                {
-                    Id = _selectedGloves?.Id ?? "",
-                    Slot = _selectedGloves?.Slot ?? SlotTypes.Helm,
-                    PhysicalResist = _selectedGloves?.PhysicalResist ?? 0,
-                    FireResist = _selectedGloves?.FireResist ?? 0,
-                    ColdResist = _selectedGloves?.ColdResist ?? 0,
-                    PoisonResist = _selectedGloves?.PoisonResist ?? 0,
-                    EnergyResist = _selectedGloves?.EnergyResist ?? 0,
-                    ImbueCount = _selectedGloves?.ImbueCount ?? 0,
-                    LostResistPoints = _selectedGloves?.LostResistPoints ?? 0,
-                };
-            suit.Legs = FindLegs
-                ? new Armor()
-                : new Armor
-                {
-                    Id = _selectedLegs?.Id ?? "",
-                    Slot = _selectedLegs?.Slot ?? SlotTypes.Helm,
-                    PhysicalResist = _selectedLegs?.PhysicalResist ?? 0,
-                    FireResist = _selectedLegs?.FireResist ?? 0,
-                    ColdResist = _selectedLegs?.ColdResist ?? 0,
-                    PoisonResist = _selectedLegs?.PoisonResist ?? 0,
-                    EnergyResist = _selectedLegs?.EnergyResist ?? 0,
-                    ImbueCount = _selectedLegs?.ImbueCount ?? 0,
-                    LostResistPoints = _selectedLegs?.LostResistPoints ?? 0,
-                };
-            suit.UpdateCurrentResists();
-
-            return suit;
-        }
-
-        private void UpdateUiItems()
-        {
-            num_HelmPhysical.Value = _selectedHelm?.PhysicalResist ?? 0;
-            num_HelmFire.Value = _selectedHelm?.FireResist ?? 0;
-            num_HelmCold.Value = _selectedHelm?.ColdResist ?? 0;
-            num_HelmPoison.Value = _selectedHelm?.PoisonResist ?? 0;
-            num_HelmEnergy.Value = _selectedHelm?.EnergyResist ?? 0;
-            tb_HelmId.Text = _selectedHelm?.Id ?? Guid.NewGuid().ToString();
-
-            num_ChestPhysical.Value = _selectedChest?.PhysicalResist ?? 0;
-            num_ChestFire.Value = _selectedChest?.FireResist ?? 0;
-            num_ChestCold.Value = _selectedChest?.ColdResist ?? 0;
-            num_ChestPoison.Value = _selectedChest?.PoisonResist ?? 0;
-            num_ChestEnergy.Value = _selectedChest?.EnergyResist ?? 0;
-            tb_ChestId.Text = _selectedChest?.Id ?? Guid.NewGuid().ToString();
-
-            num_ArmsPhysical.Value = _selectedArms?.PhysicalResist ?? 0;
-            num_ArmsFire.Value = _selectedArms?.FireResist ?? 0;
-            num_ArmsCold.Value = _selectedArms?.ColdResist ?? 0;
-            num_ArmsPoison.Value = _selectedArms?.PoisonResist ?? 0;
-            num_ArmsEnergy.Value = _selectedArms?.EnergyResist ?? 0;
-            tb_ArmsId.Text = _selectedArms?.Id ?? Guid.NewGuid().ToString();
-
-            num_GlovesPhysical.Value = _selectedGloves?.PhysicalResist ?? 0;
-            num_GlovesFire.Value = _selectedGloves?.FireResist ?? 0;
-            num_GlovesCold.Value = _selectedGloves?.ColdResist ?? 0;
-            num_GlovesPoison.Value = _selectedGloves?.PoisonResist ?? 0;
-            num_GlovesEnergy.Value = _selectedGloves?.EnergyResist ?? 0;
-            tb_GlovesId.Text = _selectedGloves?.Id ?? Guid.NewGuid().ToString();
-
-            num_LegsPhysical.Value = _selectedLegs?.PhysicalResist ?? 0;
-            num_LegsFire.Value = _selectedLegs?.FireResist ?? 0;
-            num_LegsCold.Value = _selectedLegs?.ColdResist ?? 0;
-            num_LegsPoison.Value = _selectedLegs?.PoisonResist ?? 0;
-            num_LegsEnergy.Value = _selectedLegs?.EnergyResist ?? 0;
-            tb_LegsId.Text = _selectedLegs?.Id ?? Guid.NewGuid().ToString();
-        }
-
-        private void UpdateUiSuit(Suit suit)
-        {
-            if (suit.Helm.TotalResists() > 0)
-            {
-                _selectedHelm = suit.Helm;
-            }
-
-            if (suit.Chest.TotalResists() > 0)
-            {
-                _selectedChest = suit.Chest;
-            }
-
-            if (suit.Arms.TotalResists() > 0)
-            {
-                _selectedArms = suit.Arms;
-            }
-
-            if (suit.Gloves.TotalResists() > 0)
-            {
-                _selectedGloves = suit.Gloves;
-            }
-
-            if (suit.Legs.TotalResists() > 0)
-            {
-                _selectedLegs = suit.Legs;
-            }
-
-            UpdateUiItems();
-            suit.UpdateCurrentResists();
-            num_TotalPhysical.Value = suit.CurrentResists?.PhysicalResist ?? 0;
-            num_TotalFire.Value = suit.CurrentResists?.FireResist ?? 0;
-            num_TotalCold.Value = suit.CurrentResists?.ColdResist ?? 0;
-            num_TotalPoison.Value = suit.CurrentResists?.PoisonResist ?? 0;
-            num_TotalEnergy.Value = suit.CurrentResists?.EnergyResist ?? 0;
-            tb_ArmorIds.Text = $"{suit.Helm.Id}_{suit.Chest.Id}_{suit.Arms.Id}_{suit.Gloves.Id}_{suit.Legs.Id}";
+            _selectedArmor.Clear();
+            _selectedArmor.Add(suit.Helm);
+            _selectedArmor.Add(suit.Chest);
+            _selectedArmor.Add(suit.Arms);
+            _selectedArmor.Add(suit.Gloves);
+            _selectedArmor.Add(suit.Legs);
         }
 
         #endregion UI
@@ -226,23 +81,120 @@ namespace ArmorPicker.Forms
 
         private void ArmorPickerForm_Load(object sender, EventArgs e)
         {
-            LoadResourceTypes();
+            try
+            {
+                // Set default values and bind to DGV
+                BindSuitToUi();
+
+                // Import Resist Configurations
+                var resistConfigurationRecords = _importerService.ImportJsonFile<IEnumerable<ResistConfiguration>>(ResistConfigurationFile).ToEnumeratedList();
+                if (resistConfigurationRecords.IsNullOrEmpty())
+                {
+                    MessageBox.Show(@"Failed to import Resist Configurations.  Closing!");
+                    Close();
+                }
+
+                // Re-map it to be more easily accessible
+                _resistConfigurations = resistConfigurationRecords.ToDictionary(record => record.Id);
+
+                // Import Item Types
+                _knownItemTypes = new Dictionary<string, IList<ArmorRecord>>();
+                LoadArmorMappings(ref _knownItemTypes);
+
+                // Import Resources
+                _resourceRecords = _importerService.ImportJsonFile<IEnumerable<ResourceRecord>>(ResourceKindFile).ToEnumeratedList();
+                if (_resourceRecords.IsNullOrEmpty())
+                {
+                    MessageBox.Show(@"Failed to import Resource Types.  Closing!");
+                    Close();
+                }
+
+                BindResourcesToUi();
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show($"Failed to load Data Mappings.\r\n\r\nError: {exception}");
+                Close();
+            }
+        }
+
+        private void BindResourcesToUi()
+        {
+            _resources = _resourceRecords.Select(r => new Resource
+            {
+                Id = r.Id,
+                Name = r.Name,
+                BonusResistConfigurationId = r.BonusResistConfigurationId,
+                BonusResistConfiguration = _resistConfigurations[r.BonusResistConfigurationId],
+            }).ToEnumeratedList();
+
+            cbb_HelmResourceType.DisplayMember = "Name";
+            cbb_HelmResourceType.DataSource = _resources.ToList();
+            cbb_ChestResourceType.DisplayMember = "Name";
+            cbb_ChestResourceType.DataSource = _resources.ToList();
+            cbb_ArmsResourceType.DisplayMember = "Name";
+            cbb_ArmsResourceType.DataSource = _resources.ToList();
+            cbb_GlovesResourceType.DisplayMember = "Name";
+            cbb_GlovesResourceType.DataSource = _resources.ToList();
+            cbb_LegsResourceType.DisplayMember = "Name";
+            cbb_LegsResourceType.DataSource = _resources.ToList();
+        }
+
+        private void BindSuitToUi()
+        {
+            _selectedArmor = new List<Armor>
+            {
+                new Armor
+                {
+                    Slot = SlotTypes.Helm,
+                    CurrentResists = new Resists(),
+                },
+                new Armor
+                {
+                    Slot = SlotTypes.Chest,
+                    CurrentResists = new Resists(),
+                },
+                new Armor
+                {
+                    Slot = SlotTypes.Arms,
+                    CurrentResists = new Resists(),
+                },
+                new Armor
+                {
+                    Slot = SlotTypes.Gloves,
+                    CurrentResists = new Resists(),
+                },
+                new Armor
+                {
+                    Slot = SlotTypes.Legs,
+                    CurrentResists = new Resists(),
+                },
+                new Armor
+                {
+                    Slot = SlotTypes.Unknown,
+                    CurrentResists = new Resists(),
+                },
+            };
+            dgv_SelectedArmor.AutoGenerateColumns = false;
+            var bindingSource = new BindingSource { DataSource = _selectedArmor };
+            dgv_SelectedArmor.DataSource = bindingSource;
         }
 
         private void btn_ArmsDetails_Click(object sender, EventArgs e)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(_selectedArms?.Id)) return;
+                var selectedArms = SelectedArms;
+                if (string.IsNullOrWhiteSpace(selectedArms.Id)) return;
 
-                var basePiece = _armorPieces.FirstOrDefault(p => p.Id == _selectedArms.Id);
+                var basePiece = _armorPieces.FirstOrDefault(p => p.Id == selectedArms.Id);
                 if (basePiece == null)
                 {
-                    MessageBox.Show($"Failed to locate base piece with Id '{_selectedArms.Id}'.");
+                    MessageBox.Show($@"Failed to locate base piece with Id '{selectedArms.Id}'.");
                     return;
                 }
 
-                _armorDetailsForm.PopulateForm(SelectedArmsResourceType, ApplyArmsBonus, basePiece, _selectedArms);
+                _armorDetailsForm.PopulateForm(SelectedArmsResource, basePiece, selectedArms);
                 _armorDetailsForm.ShowDialog();
             }
             catch (Exception exception)
@@ -255,17 +207,95 @@ namespace ArmorPicker.Forms
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(_selectedChest?.Id)) return;
+                var selectedChest = SelectedChest;
+                if (string.IsNullOrWhiteSpace(selectedChest.Id)) return;
 
-                var basePiece = _armorPieces.FirstOrDefault(p => p.Id == _selectedChest.Id);
+                var basePiece = _armorPieces.FirstOrDefault(p => p.Id == selectedChest.Id);
                 if (basePiece == null)
                 {
-                    MessageBox.Show($"Failed to locate base piece with Id '{_selectedChest.Id}'.");
+                    MessageBox.Show($@"Failed to locate base piece with Id '{selectedChest.Id}'.");
                     return;
                 }
 
-                _armorDetailsForm.PopulateForm(SelectedChestResourceType, ApplyChestBonus, basePiece, _selectedChest);
+                _armorDetailsForm.PopulateForm(SelectedChestResource, basePiece, selectedChest);
                 _armorDetailsForm.ShowDialog();
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(exception.ToString());
+            }
+        }
+
+        private void btn_Configure_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                var resistConfigurations = _resistConfigurations.Select(c => c.Value).ToEnumeratedList();
+                var resourceRecords = _resourceRecords;
+                var armorTypes = _knownItemTypes.SelectMany(t => t.Value);
+                var configurationEditor = new ConfigurationEditor(resistConfigurations, resourceRecords, armorTypes);
+                var result = configurationEditor.ShowDialog();
+                if (result != DialogResult.OK) return;
+
+                var newResists = JsonConvert.SerializeObject(configurationEditor.ResistConfigurations, Formatting.Indented);
+                File.WriteAllText(ResistConfigurationFile, newResists);
+                _resistConfigurations = configurationEditor.ResistConfigurations.ToDictionary(record => record.Id);
+
+                var newResources = JsonConvert.SerializeObject(configurationEditor.Resources, Formatting.Indented);
+                File.WriteAllText(ResourceKindFile, newResources);
+                _resourceRecords = configurationEditor.Resources;
+
+                var helmRecords = new List<ArmorRecord>();
+                var chestRecords = new List<ArmorRecord>();
+                var armRecords = new List<ArmorRecord>();
+                var gloveRecords = new List<ArmorRecord>();
+                var legRecords = new List<ArmorRecord>();
+                var combinedTypes = configurationEditor.ArmorTypes;
+                foreach (var armorType in combinedTypes)
+                {
+                    switch (armorType.Slot)
+                    {
+                        case SlotTypes.Helm:
+                            helmRecords.Add(armorType);
+                            break;
+
+                        case SlotTypes.Chest:
+                            chestRecords.Add(armorType);
+                            break;
+
+                        case SlotTypes.Arms:
+                            armRecords.Add(armorType);
+                            break;
+
+                        case SlotTypes.Gloves:
+                            gloveRecords.Add(armorType);
+                            break;
+
+                        case SlotTypes.Legs:
+                            legRecords.Add(armorType);
+                            break;
+
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                }
+
+                var helmRecordData = JsonConvert.SerializeObject(helmRecords, Formatting.Indented);
+                File.WriteAllText(HelmFile, helmRecordData);
+                var chestRecordData = JsonConvert.SerializeObject(chestRecords, Formatting.Indented);
+                File.WriteAllText(ChestFile, chestRecordData);
+                var armRecordData = JsonConvert.SerializeObject(armRecords, Formatting.Indented);
+                File.WriteAllText(ArmsFile, armRecordData);
+                var gloveRecordData = JsonConvert.SerializeObject(gloveRecords, Formatting.Indented);
+                File.WriteAllText(GlovesFile, gloveRecordData);
+                var legRecordData = JsonConvert.SerializeObject(legRecords, Formatting.Indented);
+                File.WriteAllText(LegsFile, legRecordData);
+
+                _knownItemTypes.Clear();
+                foreach (var itemType in combinedTypes.GroupBy(r => r.Type))
+                {
+                    _knownItemTypes.Add(itemType.Key, itemType.ToEnumeratedList());
+                }
             }
             catch (Exception exception)
             {
@@ -277,16 +307,17 @@ namespace ArmorPicker.Forms
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(_selectedGloves?.Id)) return;
+                var selectedGloves = SelectedGloves;
+                if (string.IsNullOrWhiteSpace(selectedGloves.Id)) return;
 
-                var basePiece = _armorPieces.FirstOrDefault(p => p.Id == _selectedGloves.Id);
+                var basePiece = _armorPieces.FirstOrDefault(p => p.Id == selectedGloves.Id);
                 if (basePiece == null)
                 {
-                    MessageBox.Show($"Failed to locate base piece with Id '{_selectedGloves.Id}'.");
+                    MessageBox.Show($@"Failed to locate base piece with Id '{selectedGloves.Id}'.");
                     return;
                 }
 
-                _armorDetailsForm.PopulateForm(SelectedGlovesResourceType, ApplyGlovesBonus, basePiece, _selectedGloves);
+                _armorDetailsForm.PopulateForm(SelectedGlovesResource, basePiece, selectedGloves);
                 _armorDetailsForm.ShowDialog();
             }
             catch (Exception exception)
@@ -299,16 +330,17 @@ namespace ArmorPicker.Forms
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(_selectedHelm?.Id)) return;
+                var selectedHelm = SelectedHelm;
+                if (string.IsNullOrWhiteSpace(selectedHelm.Id)) return;
 
-                var basePiece = _armorPieces.FirstOrDefault(p => p.Id == _selectedHelm.Id);
+                var basePiece = _armorPieces.FirstOrDefault(p => p.Id == selectedHelm.Id);
                 if (basePiece == null)
                 {
-                    MessageBox.Show($"Failed to locate base piece with Id '{_selectedHelm.Id}'.");
+                    MessageBox.Show($@"Failed to locate base piece with Id '{selectedHelm.Id}'.");
                     return;
                 }
 
-                _armorDetailsForm.PopulateForm(SelectedHelmResourceType, ApplyHelmBonus, basePiece, _selectedHelm);
+                _armorDetailsForm.PopulateForm(SelectedHelmResource, basePiece, selectedHelm);
                 _armorDetailsForm.ShowDialog();
             }
             catch (Exception exception)
@@ -322,11 +354,12 @@ namespace ArmorPicker.Forms
             try
             {
                 var importerService = new ImporterService();
-                var fileText = importerService.ImportFile(FileToImport);
+                var fileText = importerService.ReadFile(FileToImport);
                 var lines = importerService.SplitString(fileText, '\n');
 
                 var dict = new Dictionary<string, int>();
-                var actualtype = typeof(Armor);
+                var easyUoRecord = new EasyUoRecord();
+                var actualtype = easyUoRecord.GetType();
                 foreach (var propertyInfo in actualtype.GetProperties())
                 {
                     foreach (ColumnNumber columnNumber in propertyInfo.GetCustomAttributes(typeof(ColumnNumber), false))
@@ -343,19 +376,70 @@ namespace ArmorPicker.Forms
                     var dataArray = data?.ToArray();
                     if (data == null || dataArray.Length == 0) continue;
 
-                    var armor = new Armor();
-                    armor.Slot = (SlotTypes)int.Parse(dataArray[dict[nameof(armor.Slot)]]);
+                    // Check for Resource based on Color
+                    var itemColor = int.Parse(dataArray[dict[nameof(easyUoRecord.Color)]]);
+                    var resource = _resources.FirstOrDefault(r => r.Color == itemColor);
+                    if (resource == null)
+                    {
+                        var result = MessageBox.Show($@"Unable find known color for '{itemColor}'." +
+                                                     "\r\n\r\nWould you like to skip the record?",
+                                                     @"Unknown Color", MessageBoxButtons.YesNo);
+                        if (result == DialogResult.Yes) continue;
+                        return;
+                    }
+
+                    // This tells us the Base Resists for this item
+                    var itemType = dataArray[dict[nameof(easyUoRecord.ItemType)]];
+                    var armorRecords = _knownItemTypes[itemType];
+                    var baseArmor = armorRecords.FirstOrDefault(r => r.Color == itemColor);
+                    if (baseArmor == null)
+                    {
+                        // Type to Color is a one to many relationship
+                        var result = MessageBox.Show($@"Unable find Type '{itemType}' with Color '{itemColor}'." +
+                                                     "\r\n\r\nWould you like to skip the record?",
+                                                     @"Unexpected item Type/Color combination", MessageBoxButtons.YesNo);
+                        if (result == DialogResult.Yes) continue;
+                        return;
+                    }
+
+                    // Fetch the basics
+                    var currentResists = new Resists
+                    {
+                        Physical = int.Parse(dataArray[dict[nameof(easyUoRecord.Physical)]]),
+                        Fire = int.Parse(dataArray[dict[nameof(easyUoRecord.Fire)]]),
+                        Cold = int.Parse(dataArray[dict[nameof(easyUoRecord.Cold)]]),
+                        Poison = int.Parse(dataArray[dict[nameof(easyUoRecord.Poison)]]),
+                        Energy = int.Parse(dataArray[dict[nameof(easyUoRecord.Energy)]]),
+                    };
+                    var armor = new Armor
+                    {
+                        CurrentResists = currentResists,
+                        Slot = baseArmor.Slot,
+                    };
                     armor.Id = dataArray[dict[nameof(armor.Id)]];
-                    armor.PhysicalResist = int.Parse(dataArray[dict[nameof(armor.PhysicalResist)]]);
-                    armor.FireResist = int.Parse(dataArray[dict[nameof(armor.FireResist)]]);
-                    armor.ColdResist = int.Parse(dataArray[dict[nameof(armor.ColdResist)]]);
-                    armor.PoisonResist = int.Parse(dataArray[dict[nameof(armor.PoisonResist)]]);
-                    armor.EnergyResist = int.Parse(dataArray[dict[nameof(armor.EnergyResist)]]);
+
+                    // Set it's minimums
+                    armor.BaseResists = _resistConfigurations[baseArmor.BaseResistConfigurationId];
+
+                    // Check if it's imbued already
+                    armor.EvaluateImbuedResists(_maxResistBonus);
+
+                    // Add the bonus to the base if it it's not the default color
+                    if (itemColor != baseArmor.Color)
+                    {
+                        var resourceResists = _resistConfigurations[resource.BonusResistConfigurationId];
+                        armor.CurrentResists.Add(resourceResists);
+                    }
+                    else
+                    {
+                        armor.NeedsBonus = true;
+                    }
+
                     armors.Add(armor);
                 }
 
                 _armorPieces = armors;
-                MessageBox.Show($"Imported '{_armorPieces.Count}' records.");
+                MessageBox.Show($@"Imported '{_armorPieces.Count}' records.");
                 btn_MakeSuit.Enabled = true;
             }
             catch (Exception ex)
@@ -368,16 +452,17 @@ namespace ArmorPicker.Forms
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(_selectedLegs?.Id)) return;
+                var selectedLegs = SelectedLegs;
+                if (string.IsNullOrWhiteSpace(selectedLegs.Id)) return;
 
-                var basePiece = _armorPieces.FirstOrDefault(p => p.Id == _selectedLegs.Id);
+                var basePiece = _armorPieces.FirstOrDefault(p => p.Id == selectedLegs.Id);
                 if (basePiece == null)
                 {
-                    MessageBox.Show($"Failed to locate base piece with Id '{_selectedLegs.Id}'.");
+                    MessageBox.Show($@"Failed to locate base piece with Id '{selectedLegs.Id}'.");
                     return;
                 }
 
-                _armorDetailsForm.PopulateForm(SelectedLegsResourceType, ApplyLegsBonus, basePiece, _selectedLegs);
+                _armorDetailsForm.PopulateForm(SelectedLegsResource, basePiece, selectedLegs);
                 _armorDetailsForm.ShowDialog();
             }
             catch (Exception exception)
@@ -390,57 +475,49 @@ namespace ArmorPicker.Forms
         {
             try
             {
-                btn_MakeSuit.Enabled = false;
+                Enabled = false;
                 var armorPieces = new List<Armor>();
                 foreach (var armorPiece in _armorPieces)
                 {
-                    var clonedPiece = new Armor
-                    {
-                        Id = armorPiece.Id,
-                        Slot = armorPiece.Slot,
-                        ImbueCount = armorPiece.ImbueCount,
-                        LostResistPoints = armorPiece.LostResistPoints,
-                        PhysicalResist = armorPiece.PhysicalResist,
-                        FireResist = armorPiece.FireResist,
-                        ColdResist = armorPiece.ColdResist,
-                        PoisonResist = armorPiece.PoisonResist,
-                        EnergyResist = armorPiece.EnergyResist,
-                    };
+                    var clonedPiece = armorPiece.Clone();
                     armorPieces.Add(clonedPiece);
                 }
-                var imbueBonuses = new Armor
-                {
-                    PhysicalResist = 13,
-                    FireResist = 13,
-                    ColdResist = 13,
-                    PoisonResist = 13,
-                    EnergyResist = 13,
-                };
-                Armor helmBonus, helmMax, chestBonus, chestMax, armsBonus, armsMax, glovesBonus, glovesMax, legsBonus, legsMax;
-                LookupBonuses(SelectedHelmResourceType, imbueBonuses, out helmBonus, out helmMax, true);
-                LookupBonuses(SelectedChestResourceType, imbueBonuses, out chestBonus, out chestMax);
-                LookupBonuses(SelectedArmsResourceType, imbueBonuses, out armsBonus, out armsMax);
-                LookupBonuses(SelectedGlovesResourceType, imbueBonuses, out glovesBonus, out glovesMax);
-                LookupBonuses(SelectedLegsResourceType, imbueBonuses, out legsBonus, out legsMax);
-
                 // Sort pieces into usable groups
                 var headPieces = new List<Armor>();
                 var chestPieces = new List<Armor>();
                 var armPieces = new List<Armor>();
                 var glovePieces = new List<Armor>();
                 var legPieces = new List<Armor>();
-                SortPieces(armorPieces, helmBonus, helmMax, chestBonus, chestMax, armsBonus, armsMax, glovesBonus, glovesMax, legsBonus, legsMax, ref headPieces, ref chestPieces, ref armPieces, ref glovePieces, ref legPieces);
+                SortPieces(armorPieces, ref headPieces, ref chestPieces, ref armPieces, ref glovePieces, ref legPieces);
 
-                var suit = GetSuitFromUi();
-                CheckPieces(headPieces, chestPieces, armPieces, glovePieces, legPieces, suit);
-                UpdateUiSuit(suit);
+                var suit = new Suit
+                {
+                    Helm = SelectedHelm,
+                    Chest = SelectedChest,
+                    Arms = SelectedArms,
+                    Gloves = SelectedGloves,
+                    Legs = SelectedLegs,
+                    Misc = SelectedMisc,
+                    CurrentResists = new Resists(),
+                    MaxResists = new Resists
+                    {
+                        Physical = GoalPhysical,
+                        Fire = GoalFire,
+                        Cold = GoalCold,
+                        Poison = GoalPoison,
+                        Energy = GoalEnergy,
+                    },
+                };
+                suit.UpdateCurrentResists();
+                OptimizeSuit(headPieces, chestPieces, armPieces, glovePieces, legPieces, suit);
+                PushSuitToUi(suit);
 
                 var newSuitStringBuilder = new StringBuilder();
-                newSuitStringBuilder.AppendLine($"Physical Resist: {suit.CurrentResists.PhysicalResist} / {suit.MaxResists.PhysicalResist}");
-                newSuitStringBuilder.AppendLine($"Fire Resist: {suit.CurrentResists.FireResist} / {suit.MaxResists.FireResist}");
-                newSuitStringBuilder.AppendLine($"Cold Resist: {suit.CurrentResists.ColdResist} / {suit.MaxResists.ColdResist}");
-                newSuitStringBuilder.AppendLine($"Poison Resist: {suit.CurrentResists.PoisonResist} / {suit.MaxResists.PoisonResist}");
-                newSuitStringBuilder.AppendLine($"Energy Resist: {suit.CurrentResists.EnergyResist} / {suit.MaxResists.EnergyResist}");
+                newSuitStringBuilder.AppendLine($"Physical Resist: {suit.CurrentResists.Physical} / {suit.MaxResists.Physical}");
+                newSuitStringBuilder.AppendLine($"Fire Resist: {suit.CurrentResists.Fire} / {suit.MaxResists.Fire}");
+                newSuitStringBuilder.AppendLine($"Cold Resist: {suit.CurrentResists.Cold} / {suit.MaxResists.Cold}");
+                newSuitStringBuilder.AppendLine($"Poison Resist: {suit.CurrentResists.Poison} / {suit.MaxResists.Poison}");
+                newSuitStringBuilder.AppendLine($"Energy Resist: {suit.CurrentResists.Energy} / {suit.MaxResists.Energy}");
                 MessageBox.Show($"Suit Resists:\r\n\r\n{newSuitStringBuilder}");
 
                 var armorStringBuilder = new StringBuilder();
@@ -457,178 +534,56 @@ namespace ArmorPicker.Forms
             }
             finally
             {
-                btn_MakeSuit.Enabled = true;
+                Enabled = true;
             }
         }
 
-        private void cb_FindArms_CheckedChanged(object sender, EventArgs e)
+        private void dgv_SelectedArmor_Validating(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            num_ArmsPhysical.Enabled = !cb_FindArms.Checked;
-            num_ArmsFire.Enabled = !cb_FindArms.Checked;
-            num_ArmsCold.Enabled = !cb_FindArms.Checked;
-            num_ArmsPoison.Enabled = !cb_FindArms.Checked;
-            num_ArmsEnergy.Enabled = !cb_FindArms.Checked;
         }
 
-        private void cb_FindChest_CheckedChanged(object sender, EventArgs e)
+        private void LoadArmorMappings(ref Dictionary<string, IList<ArmorRecord>> knownItemTypes)
         {
-            num_ChestPhysical.Enabled = !cb_FindChest.Checked;
-            num_ChestFire.Enabled = !cb_FindChest.Checked;
-            num_ChestCold.Enabled = !cb_FindChest.Checked;
-            num_ChestPoison.Enabled = !cb_FindChest.Checked;
-            num_ChestEnergy.Enabled = !cb_FindChest.Checked;
-        }
+            var typeRecords = new List<ArmorRecord>();
+            var helmRecords = _importerService.ImportJsonFile<IEnumerable<ArmorRecord>>(HelmFile).ToEnumeratedList();
+            foreach (var armorRecord in helmRecords)
+            {
+                armorRecord.Slot = SlotTypes.Helm;
+            }
+            typeRecords.AddRange(helmRecords);
 
-        private void cb_FindGloves_CheckedChanged(object sender, EventArgs e)
-        {
-            num_GlovesPhysical.Enabled = !cb_FindGloves.Checked;
-            num_GlovesFire.Enabled = !cb_FindGloves.Checked;
-            num_GlovesCold.Enabled = !cb_FindGloves.Checked;
-            num_GlovesPoison.Enabled = !cb_FindGloves.Checked;
-            num_GlovesEnergy.Enabled = !cb_FindGloves.Checked;
-        }
+            var chestRecords = _importerService.ImportJsonFile<IEnumerable<ArmorRecord>>(ChestFile).ToEnumeratedList();
+            foreach (var armorRecord in chestRecords)
+            {
+                armorRecord.Slot = SlotTypes.Chest;
+            }
+            typeRecords.AddRange(chestRecords);
 
-        private void cb_FindHelm_CheckedChanged(object sender, EventArgs e)
-        {
-            num_HelmPhysical.Enabled = !cb_FindHelm.Checked;
-            num_HelmFire.Enabled = !cb_FindHelm.Checked;
-            num_HelmCold.Enabled = !cb_FindHelm.Checked;
-            num_HelmPoison.Enabled = !cb_FindHelm.Checked;
-            num_HelmEnergy.Enabled = !cb_FindHelm.Checked;
-        }
+            var armRecords = _importerService.ImportJsonFile<IEnumerable<ArmorRecord>>(ArmsFile).ToEnumeratedList();
+            foreach (var armorRecord in armRecords)
+            {
+                armorRecord.Slot = SlotTypes.Arms;
+            }
+            typeRecords.AddRange(armRecords);
 
-        private void cb_FindLegs_CheckedChanged(object sender, EventArgs e)
-        {
-            num_LegsPhysical.Enabled = !cb_FindLegs.Checked;
-            num_LegsFire.Enabled = !cb_FindLegs.Checked;
-            num_LegsCold.Enabled = !cb_FindLegs.Checked;
-            num_LegsPoison.Enabled = !cb_FindLegs.Checked;
-            num_LegsEnergy.Enabled = !cb_FindLegs.Checked;
-        }
+            var gloveRecords = _importerService.ImportJsonFile<IEnumerable<ArmorRecord>>(GlovesFile).ToEnumeratedList();
+            foreach (var armorRecord in gloveRecords)
+            {
+                armorRecord.Slot = SlotTypes.Gloves;
+            }
+            typeRecords.AddRange(gloveRecords);
 
-        private void num_ArmsCold_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedArms.ColdResist = (int)((NumericUpDown)sender).Value;
-        }
+            var legRecords = _importerService.ImportJsonFile<IEnumerable<ArmorRecord>>(LegsFile).ToEnumeratedList();
+            foreach (var armorRecord in legRecords)
+            {
+                armorRecord.Slot = SlotTypes.Legs;
+            }
+            typeRecords.AddRange(legRecords);
 
-        private void num_ArmsEnergy_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedArms.EnergyResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_ArmsFire_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedArms.FireResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_ArmsPhysical_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedArms.PhysicalResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_ArmsPoison_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedArms.PoisonResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_ChestCold_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedChest.ColdResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_ChestEnergy_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedChest.EnergyResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_ChestFire_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedChest.FireResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_ChestPhysical_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedChest.PhysicalResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_ChestPoison_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedChest.PoisonResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_GlovesCold_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedGloves.ColdResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_GlovesEnergy_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedGloves.EnergyResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_GlovesFire_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedGloves.FireResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_GlovesPhysical_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedGloves.PhysicalResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_GlovesPoison_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedGloves.PoisonResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_HelmCold_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedHelm.ColdResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_HelmEnergy_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedHelm.EnergyResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_HelmFire_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedHelm.FireResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_HelmPhysical_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedHelm.PhysicalResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_HelmPoison_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedHelm.PoisonResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_LegsCold_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedLegs.ColdResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_LegsEnergy_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedLegs.EnergyResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_LegsFire_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedLegs.FireResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_LegsPhysical_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedLegs.PhysicalResist = (int)((NumericUpDown)sender).Value;
-        }
-
-        private void num_LegsPoison_ValueChanged(object sender, EventArgs e)
-        {
-            _selectedLegs.PoisonResist = (int)((NumericUpDown)sender).Value;
+            foreach (var itemType in typeRecords.GroupBy(r => r.Type))
+            {
+                knownItemTypes.Add(itemType.Key, itemType.ToEnumeratedList());
+            }
         }
 
         #endregion Event Handlers
@@ -654,23 +609,23 @@ namespace ArmorPicker.Forms
                 var armorChanged = false;
                 if (suitEvaluatorService.PhysicalLowest)
                 {
-                    armorChanged = candidate.Armor.PhysicalResist > currentArmor.PhysicalResist;
+                    armorChanged = candidate.Armor.CurrentResists.Physical > currentArmor.CurrentResists.Physical;
                 }
                 else if (suitEvaluatorService.FireLowest)
                 {
-                    armorChanged = candidate.Armor.FireResist > currentArmor.FireResist;
+                    armorChanged = candidate.Armor.CurrentResists.Fire > currentArmor.CurrentResists.Fire;
                 }
                 else if (suitEvaluatorService.ColdLowest)
                 {
-                    armorChanged = candidate.Armor.ColdResist > currentArmor.ColdResist;
+                    armorChanged = candidate.Armor.CurrentResists.Cold > currentArmor.CurrentResists.Cold;
                 }
                 else if (suitEvaluatorService.PoisonLowest)
                 {
-                    armorChanged = candidate.Armor.PoisonResist > currentArmor.PoisonResist;
+                    armorChanged = candidate.Armor.CurrentResists.Poison > currentArmor.CurrentResists.Poison;
                 }
                 else if (suitEvaluatorService.EnergyLowest)
                 {
-                    armorChanged = candidate.Armor.EnergyResist > currentArmor.EnergyResist;
+                    armorChanged = candidate.Armor.CurrentResists.Energy > currentArmor.CurrentResists.Energy;
                 }
 
                 if (armorChanged) return candidate.Armor;
@@ -679,19 +634,19 @@ namespace ArmorPicker.Forms
             return null;
         }
 
-        private void AddImbuable(Armor armorPiece, Armor maxImbueable, ref List<Armor> armorPieces)
+        private void AddImbuable(Armor armorPiece, ref List<Armor> armorPieces)
         {
-            if (MaxImbues < 1) return;
+            if (_maxImbues < 1) return;
 
-            var armorEvaluatorService = new ArmorEvaluatorService(armorPiece, maxImbueable);
+            var armorEvaluatorService = new ArmorEvaluatorService(armorPiece, _maxResistBonus);
 
             var physicalImbue = armorEvaluatorService.ImbuePhysical();
             armorPieces.Add(physicalImbue);
-            for (var i = 2; i <= MaxImbues; i++)
+            for (var i = 2; i <= _maxImbues; i++)
             {
                 if (physicalImbue == null) break;
 
-                var secondaryImbue = PerformFirstLowestImbue(maxImbueable, physicalImbue);
+                var secondaryImbue = PerformFirstLowestImbue(physicalImbue, _maxResistBonus);
                 if (secondaryImbue != null)
                 {
                     armorPieces.Add(secondaryImbue);
@@ -701,11 +656,11 @@ namespace ArmorPicker.Forms
 
             var fireImbue = armorEvaluatorService.ImbueFire();
             armorPieces.Add(fireImbue);
-            for (var i = 2; i <= MaxImbues; i++)
+            for (var i = 2; i <= _maxImbues; i++)
             {
                 if (fireImbue == null) break;
 
-                var secondaryImbue = PerformFirstLowestImbue(maxImbueable, fireImbue);
+                var secondaryImbue = PerformFirstLowestImbue(fireImbue, _maxResistBonus);
                 if (secondaryImbue != null)
                 {
                     armorPieces.Add(secondaryImbue);
@@ -715,11 +670,11 @@ namespace ArmorPicker.Forms
 
             var energyImbue = armorEvaluatorService.ImbueEnergy();
             armorPieces.Add(energyImbue);
-            for (var i = 2; i <= MaxImbues; i++)
+            for (var i = 2; i <= _maxImbues; i++)
             {
                 if (energyImbue == null) break;
 
-                var secondaryImbue = PerformFirstLowestImbue(maxImbueable, energyImbue);
+                var secondaryImbue = PerformFirstLowestImbue(energyImbue, _maxResistBonus);
                 if (secondaryImbue != null)
                 {
                     armorPieces.Add(secondaryImbue);
@@ -729,11 +684,11 @@ namespace ArmorPicker.Forms
 
             var coldImbue = armorEvaluatorService.ImbueCold();
             armorPieces.Add(coldImbue);
-            for (var i = 2; i <= MaxImbues; i++)
+            for (var i = 2; i <= _maxImbues; i++)
             {
                 if (coldImbue == null) break;
 
-                var secondaryImbue = PerformFirstLowestImbue(maxImbueable, coldImbue);
+                var secondaryImbue = PerformFirstLowestImbue(coldImbue, _maxResistBonus);
                 if (secondaryImbue != null)
                 {
                     armorPieces.Add(secondaryImbue);
@@ -743,11 +698,11 @@ namespace ArmorPicker.Forms
 
             var poisonImbue = armorEvaluatorService.ImbuePoison();
             armorPieces.Add(poisonImbue);
-            for (var i = 2; i <= MaxImbues; i++)
+            for (var i = 2; i <= _maxImbues; i++)
             {
                 if (poisonImbue == null) break;
 
-                var secondaryImbue = PerformFirstLowestImbue(maxImbueable, poisonImbue);
+                var secondaryImbue = PerformFirstLowestImbue(poisonImbue, _maxResistBonus);
                 if (secondaryImbue != null)
                 {
                     armorPieces.Add(secondaryImbue);
@@ -756,69 +711,22 @@ namespace ArmorPicker.Forms
             }
         }
 
-        private void CheckPieces(List<Armor> headPieces, List<Armor> chestPieces, List<Armor> armPieces, List<Armor> glovePieces, List<Armor> legPieces, Suit suit)
-        {
-            var foundBetterFit = true;
-            var iterations = 1;
-            while (foundBetterFit && iterations < MaxIterations)
-            {
-                Debug.WriteLine($"Starting iteration '{iterations}'.");
-                var betterHelm = CheckForBetterFit(suit.Helm, headPieces, suit);
-                if (betterHelm != null)
-                {
-                    Console.WriteLine("Changed Helm.");
-                    UpdateSlot(betterHelm, suit);
-                }
-
-                var betterChest = CheckForBetterFit(suit.Chest, chestPieces, suit);
-                if (betterChest != null)
-                {
-                    Console.WriteLine("Changed Chest.");
-                    UpdateSlot(betterChest, suit);
-                }
-
-                var betterArms = CheckForBetterFit(suit.Arms, armPieces, suit);
-                if (betterArms != null)
-                {
-                    Console.WriteLine("Changed Arms.");
-                    UpdateSlot(betterArms, suit);
-                }
-
-                var betterGloves = CheckForBetterFit(suit.Gloves, glovePieces, suit);
-                if (betterGloves != null)
-                {
-                    Console.WriteLine("Changed Gloves.");
-                    UpdateSlot(betterGloves, suit);
-                }
-
-                var betterLegs = CheckForBetterFit(suit.Legs, legPieces, suit);
-                if (betterLegs != null)
-                {
-                    Console.WriteLine("Changed Legs.");
-                    UpdateSlot(betterLegs, suit);
-                }
-
-                foundBetterFit = betterHelm != null || betterChest != null || betterArms != null || betterGloves != null || betterLegs != null;
-                iterations++;
-            }
-        }
-
         private ArmorCandidate ConvertToCandidate(Armor currentArmor, Suit currentSuit, Armor candidate)
         {
-            var basePhysical = currentSuit.CurrentResists.PhysicalResist - currentArmor.PhysicalResist;
-            var newPhysical = basePhysical + candidate.PhysicalResist - currentSuit.MaxResists.PhysicalResist;
+            var basePhysical = currentSuit.CurrentResists.Physical - currentArmor.CurrentResists.Physical;
+            var newPhysical = basePhysical + candidate.CurrentResists.Physical - currentSuit.MaxResists.Physical;
 
-            var baseFire = currentSuit.CurrentResists.FireResist - currentArmor.FireResist;
-            var newFire = baseFire + candidate.FireResist - currentSuit.MaxResists.FireResist;
+            var baseFire = currentSuit.CurrentResists.Fire - currentArmor.CurrentResists.Fire;
+            var newFire = baseFire + candidate.CurrentResists.Fire - currentSuit.MaxResists.Fire;
 
-            var baseCold = currentSuit.CurrentResists.ColdResist - currentArmor.ColdResist;
-            var newCold = baseCold + candidate.ColdResist - currentSuit.MaxResists.ColdResist;
+            var baseCold = currentSuit.CurrentResists.Cold - currentArmor.CurrentResists.Cold;
+            var newCold = baseCold + candidate.CurrentResists.Cold - currentSuit.MaxResists.Cold;
 
-            var basePoison = currentSuit.CurrentResists.PoisonResist - currentArmor.PoisonResist;
-            var newPoison = basePoison + candidate.PoisonResist - currentSuit.MaxResists.PoisonResist;
+            var basePoison = currentSuit.CurrentResists.Poison - currentArmor.CurrentResists.Poison;
+            var newPoison = basePoison + candidate.CurrentResists.Poison - currentSuit.MaxResists.Poison;
 
-            var baseEnergy = currentSuit.CurrentResists.EnergyResist - currentArmor.EnergyResist;
-            var newEnergy = baseEnergy + candidate.EnergyResist - currentSuit.MaxResists.EnergyResist;
+            var baseEnergy = currentSuit.CurrentResists.Energy - currentArmor.CurrentResists.Energy;
+            var newEnergy = baseEnergy + candidate.CurrentResists.Energy - currentSuit.MaxResists.Energy;
 
             return new ArmorCandidate
             {
@@ -833,7 +741,10 @@ namespace ArmorPicker.Forms
 
         private string ExportArmor(string name, Armor armor)
         {
-            return $"{name}\t{armor.PhysicalResist}\t{armor.FireResist}\t{armor.ColdResist}\t{armor.PoisonResist}\t{armor.EnergyResist}\t'{armor.ImbueCount}' Imbues, Lost: {armor.LostResistPoints}";
+            return $"{name}" +
+                   $"\t{armor.CurrentResists.Physical}\t{armor.CurrentResists.Fire}\t{armor.CurrentResists.Cold}" +
+                   $"\t{armor.CurrentResists.Poison}\t{armor.CurrentResists.Energy}" +
+                   $"\t'{armor.ImbueCount}' Imbues, Lost: {armor.LostResistPoints}";
         }
 
         private Candidate FormCandidate(int newResist)
@@ -846,180 +757,68 @@ namespace ArmorPicker.Forms
             };
         }
 
-        private Armor GetBasicResists(ResourceType resourceType, bool headSlot = false)
+        private Resists GetBonus(Resource resource)
         {
-            switch (resourceType)
+            return new Resists
             {
-                case ResourceType.Oak:
-                case ResourceType.Heartwood:
-                    if (headSlot)
-                    {
-                        return new Armor
-                        {
-                            PhysicalResist = 5,
-                            FireResist = 1,
-                            ColdResist = 2,
-                            PoisonResist = 2,
-                            EnergyResist = 5,
-                        };
-                    }
+                Physical = resource.BonusResistConfiguration.Physical,
+                Fire = resource.BonusResistConfiguration.Fire,
+                Cold = resource.BonusResistConfiguration.Cold,
+                Poison = resource.BonusResistConfiguration.Poison,
+                Energy = resource.BonusResistConfiguration.Energy,
+            };
+        }
 
-                    return new Armor
-                    {
-                        PhysicalResist = 7,
-                        FireResist = 3,
-                        ColdResist = 2,
-                        PoisonResist = 3,
-                        EnergyResist = 2,
-                    };
+        private void OptimizeSuit(List<Armor> headPieces, List<Armor> chestPieces, List<Armor> armPieces, List<Armor> glovePieces, List<Armor> legPieces, Suit suit)
+        {
+            var foundBetterFit = true;
+            var iterations = 1;
+            while (foundBetterFit && iterations < _maxIterations)
+            {
+                Debug.WriteLine($"Starting iteration '{iterations}'.");
+                var betterHelm = CheckForBetterFit(suit.Helm, headPieces, suit);
+                if (betterHelm != null)
+                {
+                    Console.WriteLine(@"Changed Helm.");
+                    UpdateSlot(betterHelm, suit);
+                }
 
-                case ResourceType.Spined:
-                case ResourceType.Horned:
-                case ResourceType.Barbed:
-                    return new Armor
-                    {
-                        PhysicalResist = 2,
-                        FireResist = 4,
-                        ColdResist = 3,
-                        PoisonResist = 3,
-                        EnergyResist = 3,
-                    };
+                var betterChest = CheckForBetterFit(suit.Chest, chestPieces, suit);
+                if (betterChest != null)
+                {
+                    Console.WriteLine(@"Changed Chest.");
+                    UpdateSlot(betterChest, suit);
+                }
 
-                case ResourceType.Iron:
-                case ResourceType.Verite:
-                case ResourceType.Valorite:
-                    if (headSlot)
-                    {
-                        return new Armor
-                        {
-                            PhysicalResist = 7,
-                            FireResist = 2,
-                            ColdResist = 2,
-                            PoisonResist = 2,
-                            EnergyResist = 2,
-                        };
-                    }
+                var betterArms = CheckForBetterFit(suit.Arms, armPieces, suit);
+                if (betterArms != null)
+                {
+                    Console.WriteLine(@"Changed Arms.");
+                    UpdateSlot(betterArms, suit);
+                }
 
-                    return new Armor
-                    {
-                        PhysicalResist = 5,
-                        FireResist = 3,
-                        ColdResist = 2,
-                        PoisonResist = 3,
-                        EnergyResist = 2,
-                    };
+                var betterGloves = CheckForBetterFit(suit.Gloves, glovePieces, suit);
+                if (betterGloves != null)
+                {
+                    Console.WriteLine(@"Changed Gloves.");
+                    UpdateSlot(betterGloves, suit);
+                }
 
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(resourceType), resourceType, null);
+                var betterLegs = CheckForBetterFit(suit.Legs, legPieces, suit);
+                if (betterLegs != null)
+                {
+                    Console.WriteLine(@"Changed Legs.");
+                    UpdateSlot(betterLegs, suit);
+                }
+
+                foundBetterFit = betterHelm != null || betterChest != null || betterArms != null || betterGloves != null || betterLegs != null;
+                iterations++;
             }
         }
 
-        private Armor GetBonus(ResourceType resourceType)
+        private Armor PerformFirstLowestImbue(Armor basePiece, int maxResistBonus)
         {
-            switch (resourceType)
-            {
-                case ResourceType.Heartwood:
-                    return new Armor
-                    {
-                        PhysicalResist = 0,
-                        FireResist = 3,
-                        ColdResist = 2,
-                        PoisonResist = 7,
-                        EnergyResist = 2,
-                    };
-
-                case ResourceType.Oak:
-                    return new Armor
-                    {
-                        PhysicalResist = 1,
-                        FireResist = 3,
-                        ColdResist = 0,
-                        PoisonResist = 2,
-                        EnergyResist = 3,
-                    };
-
-                case ResourceType.Spined:
-                    return new Armor
-                    {
-                        PhysicalResist = 5,
-                        FireResist = 0,
-                        ColdResist = 0,
-                        PoisonResist = 0,
-                        EnergyResist = 0,
-                    };
-
-                case ResourceType.Barbed:
-                    return new Armor
-                    {
-                        PhysicalResist = 2,
-                        FireResist = 1,
-                        ColdResist = 2,
-                        PoisonResist = 3,
-                        EnergyResist = 4,
-                    };
-
-                case ResourceType.Iron:
-                    return new Armor();
-
-                case ResourceType.Verite:
-                    return new Armor
-                    {
-                        PhysicalResist = 3,
-                        FireResist = 3,
-                        ColdResist = 2,
-                        PoisonResist = 3,
-                        EnergyResist = 1,
-                    };
-
-                case ResourceType.Horned:
-                case ResourceType.Valorite:
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(resourceType), resourceType, null);
-            }
-        }
-
-        private void LoadResourceTypes()
-        {
-            var resourceTypes = new List<ResourceType>
-            {
-                ResourceType.Oak,
-                ResourceType.Heartwood,
-                ResourceType.Spined,
-                ResourceType.Horned,
-                ResourceType.Barbed,
-                ResourceType.Iron,
-                ResourceType.Verite,
-                ResourceType.Valorite
-            };
-            resourceTypes.Sort();
-            cbb_HelmResourceType.DataSource = resourceTypes.ToList();
-            cbb_ChestResourceType.DataSource = resourceTypes.ToList();
-            cbb_ArmsResourceType.DataSource = resourceTypes.ToList();
-            cbb_LegsResourceType.DataSource = resourceTypes.ToList();
-
-            var gloveResourceTypes = new List<ResourceType>
-            {
-                ResourceType.Oak,
-                ResourceType.Heartwood,
-                ResourceType.Spined,
-                ResourceType.Horned,
-                ResourceType.Barbed,
-            };
-            gloveResourceTypes.Sort();
-            cbb_GlovesResourceType.DataSource = gloveResourceTypes;
-        }
-
-        private void LookupBonuses(ResourceType resourceType, Armor imbueBonuses, out Armor bonusResist, out Armor maxResist, bool headPiece = false)
-        {
-            var baseResist = GetBasicResists(resourceType, headPiece);
-            bonusResist = GetBonus(resourceType);
-            maxResist = new Armor();
-            maxResist.Add(baseResist, bonusResist, imbueBonuses);
-        }
-
-        private Armor PerformFirstLowestImbue(Armor bonusHead, Armor basePiece)
-        {
-            var armorEvaluatorService = new ArmorEvaluatorService(basePiece, bonusHead);
+            var armorEvaluatorService = new ArmorEvaluatorService(basePiece, maxResistBonus);
             if (armorEvaluatorService.PhysicalLowest) return armorEvaluatorService.ImbuePhysical();
             if (armorEvaluatorService.FireLowest) return armorEvaluatorService.ImbueFire();
             if (armorEvaluatorService.EnergyLowest) return armorEvaluatorService.ImbueEnergy();
@@ -1029,76 +828,119 @@ namespace ArmorPicker.Forms
             return null;
         }
 
-        private void SortPieces(List<Armor> armorPieces, Armor helmBonus, Armor helmMax, Armor chestBonus, Armor chestMax, Armor armsBonus, Armor armsMax, Armor glovesBonus, Armor glovesMax, Armor legsBonus, Armor legsMax, ref List<Armor> headPieces, ref List<Armor> chestPieces, ref List<Armor> armPieces, ref List<Armor> glovePieces, ref List<Armor> legPieces)
+        private void SortPieces(IEnumerable<Armor> armorPieces, ref List<Armor> headPieces, ref List<Armor> chestPieces, ref List<Armor> armPieces, ref List<Armor> glovePieces, ref List<Armor> legPieces)
         {
-            foreach (var armorPiece in armorPieces)
+            var selectedHelm = SelectedHelm;
+            var helmBonus = GetBonus(SelectedHelmResource);
+            var selectedChest = SelectedChest;
+            var chestBonus = GetBonus(SelectedChestResource);
+            var selectedArms = SelectedArms;
+            var armsBonus = GetBonus(SelectedArmsResource);
+            var selectedGloves = SelectedGloves;
+            var glovesBonus = GetBonus(SelectedGlovesResource);
+            var selectedLegs = SelectedLegs;
+            var legsBonus = GetBonus(SelectedLegsResource);
+            foreach (var armorPiece in armorPieces.ToEnumeratedList())
             {
-                if (armorPiece.PhysicalResist == 0 && armorPiece.FireResist == 0 && armorPiece.ColdResist == 0 && armorPiece.PoisonResist == 0 && armorPiece.EnergyResist == 0) continue;
+                var currentResists = armorPiece.CurrentResists;
+                var baseResists = armorPiece.BaseResists;
+                if (currentResists.Physical == 0 && currentResists.Fire == 0
+                    && currentResists.Cold == 0 && currentResists.Poison == 0
+                    && currentResists.Energy == 0) continue;
 
                 switch (armorPiece.Slot)
                 {
                     case SlotTypes.Helm:
-                        if (!FindHelm) break;
+                        if (selectedHelm.Locked) break;
 
-                        if (ApplyHelmBonus)
+                        if (selectedHelm.NeedsBonus)
                         {
-                            armorPiece.Add(helmBonus);
+                            baseResists.Add(helmBonus);
+                            currentResists.Add(helmBonus);
+                            selectedHelm.NeedsBonus = false;
                         }
 
                         headPieces.Add(armorPiece);
-                        AddImbuable(armorPiece, helmMax, ref headPieces);
+                        if (selectedHelm.ImbueCount < _maxImbues)
+                        {
+                            AddImbuable(armorPiece, ref headPieces);
+                        }
                         break;
 
                     case SlotTypes.Chest:
-                        if (!FindChest) break;
+                        if (selectedChest.Locked) break;
 
-                        if (ApplyChestBonus)
+                        if (selectedChest.NeedsBonus)
                         {
-                            armorPiece.Add(chestBonus);
+                            baseResists.Add(chestBonus);
+                            currentResists.Add(chestBonus);
+                            selectedChest.NeedsBonus = false;
                         }
 
                         chestPieces.Add(armorPiece);
-                        AddImbuable(armorPiece, chestMax, ref chestPieces);
+
+                        if (selectedChest.ImbueCount < _maxImbues)
+                        {
+                            AddImbuable(armorPiece, ref chestPieces);
+                        }
                         break;
 
                     case SlotTypes.Arms:
-                        if (!FindArms) break;
+                        if (selectedArms.Locked) break;
 
-                        if (ApplyArmsBonus)
+                        if (selectedArms.NeedsBonus)
                         {
-                            armorPiece.Add(armsBonus);
+                            baseResists.Add(armsBonus);
+                            currentResists.Add(armsBonus);
+                            selectedArms.NeedsBonus = false;
                         }
 
                         armPieces.Add(armorPiece);
-                        AddImbuable(armorPiece, armsMax, ref armPieces);
+
+                        if (selectedArms.ImbueCount < _maxImbues)
+                        {
+                            AddImbuable(armorPiece, ref armPieces);
+                        }
                         break;
 
                     case SlotTypes.Gloves:
-                        if (!FindGloves) break;
+                        if (selectedGloves.Locked) break;
 
-                        if (ApplyGlovesBonus)
+                        if (selectedGloves.NeedsBonus)
                         {
-                            armorPiece.Add(glovesBonus);
+                            baseResists.Add(glovesBonus);
+                            currentResists.Add(glovesBonus);
+                            selectedGloves.NeedsBonus = false;
                         }
 
                         glovePieces.Add(armorPiece);
-                        AddImbuable(armorPiece, glovesMax, ref glovePieces);
+
+                        if (selectedGloves.ImbueCount < _maxImbues)
+                        {
+                            AddImbuable(armorPiece, ref glovePieces);
+                        }
                         break;
 
                     case SlotTypes.Legs:
-                        if (!FindLegs) break;
+                        if (selectedLegs.Locked) break;
 
-                        if (ApplyLegsBonus)
+                        if (selectedLegs.NeedsBonus)
                         {
-                            armorPiece.Add(legsBonus);
+                            baseResists.Add(legsBonus);
+                            currentResists.Add(legsBonus);
+                            selectedLegs.NeedsBonus = false;
                         }
 
                         legPieces.Add(armorPiece);
-                        AddImbuable(armorPiece, legsMax, ref legPieces);
+
+                        if (selectedLegs.ImbueCount < _maxImbues)
+                        {
+                            AddImbuable(armorPiece, ref legPieces);
+                        }
                         break;
 
                     default:
-                        throw new ArgumentOutOfRangeException();
+                        throw new ArgumentOutOfRangeException($"Armor '{armorPiece.Id}' does not fill a known slot.");
                 }
             }
         }
@@ -1108,47 +950,47 @@ namespace ArmorPicker.Forms
             switch (newPiece.Slot)
             {
                 case SlotTypes.Helm:
-                    suit.CurrentResists.PhysicalResist = suit.CurrentResists.PhysicalResist - suit.Helm.PhysicalResist + newPiece.PhysicalResist;
-                    suit.CurrentResists.FireResist = suit.CurrentResists.FireResist - suit.Helm.FireResist + newPiece.FireResist;
-                    suit.CurrentResists.ColdResist = suit.CurrentResists.ColdResist - suit.Helm.ColdResist + newPiece.ColdResist;
-                    suit.CurrentResists.PoisonResist = suit.CurrentResists.PoisonResist - suit.Helm.PoisonResist + newPiece.PoisonResist;
-                    suit.CurrentResists.EnergyResist = suit.CurrentResists.EnergyResist - suit.Helm.EnergyResist + newPiece.EnergyResist;
+                    suit.CurrentResists.Physical = suit.CurrentResists.Physical - suit.Helm.CurrentResists.Physical + newPiece.CurrentResists.Physical;
+                    suit.CurrentResists.Fire = suit.CurrentResists.Fire - suit.Helm.CurrentResists.Fire + newPiece.CurrentResists.Fire;
+                    suit.CurrentResists.Cold = suit.CurrentResists.Cold - suit.Helm.CurrentResists.Cold + newPiece.CurrentResists.Cold;
+                    suit.CurrentResists.Poison = suit.CurrentResists.Poison - suit.Helm.CurrentResists.Poison + newPiece.CurrentResists.Poison;
+                    suit.CurrentResists.Energy = suit.CurrentResists.Energy - suit.Helm.CurrentResists.Energy + newPiece.CurrentResists.Energy;
                     suit.Helm = newPiece;
                     break;
 
                 case SlotTypes.Chest:
-                    suit.CurrentResists.PhysicalResist = suit.CurrentResists.PhysicalResist - suit.Chest.PhysicalResist + newPiece.PhysicalResist;
-                    suit.CurrentResists.FireResist = suit.CurrentResists.FireResist - suit.Chest.FireResist + newPiece.FireResist;
-                    suit.CurrentResists.ColdResist = suit.CurrentResists.ColdResist - suit.Chest.ColdResist + newPiece.ColdResist;
-                    suit.CurrentResists.PoisonResist = suit.CurrentResists.PoisonResist - suit.Chest.PoisonResist + newPiece.PoisonResist;
-                    suit.CurrentResists.EnergyResist = suit.CurrentResists.EnergyResist - suit.Chest.EnergyResist + newPiece.EnergyResist;
+                    suit.CurrentResists.Physical = suit.CurrentResists.Physical - suit.Chest.CurrentResists.Physical + newPiece.CurrentResists.Physical;
+                    suit.CurrentResists.Fire = suit.CurrentResists.Fire - suit.Chest.CurrentResists.Fire + newPiece.CurrentResists.Fire;
+                    suit.CurrentResists.Cold = suit.CurrentResists.Cold - suit.Chest.CurrentResists.Cold + newPiece.CurrentResists.Cold;
+                    suit.CurrentResists.Poison = suit.CurrentResists.Poison - suit.Chest.CurrentResists.Poison + newPiece.CurrentResists.Poison;
+                    suit.CurrentResists.Energy = suit.CurrentResists.Energy - suit.Chest.CurrentResists.Energy + newPiece.CurrentResists.Energy;
                     suit.Chest = newPiece;
                     break;
 
                 case SlotTypes.Arms:
-                    suit.CurrentResists.PhysicalResist = suit.CurrentResists.PhysicalResist - suit.Arms.PhysicalResist + newPiece.PhysicalResist;
-                    suit.CurrentResists.FireResist = suit.CurrentResists.FireResist - suit.Arms.FireResist + newPiece.FireResist;
-                    suit.CurrentResists.ColdResist = suit.CurrentResists.ColdResist - suit.Arms.ColdResist + newPiece.ColdResist;
-                    suit.CurrentResists.PoisonResist = suit.CurrentResists.PoisonResist - suit.Arms.PoisonResist + newPiece.PoisonResist;
-                    suit.CurrentResists.EnergyResist = suit.CurrentResists.EnergyResist - suit.Arms.EnergyResist + newPiece.EnergyResist;
+                    suit.CurrentResists.Physical = suit.CurrentResists.Physical - suit.Arms.CurrentResists.Physical + newPiece.CurrentResists.Physical;
+                    suit.CurrentResists.Fire = suit.CurrentResists.Fire - suit.Arms.CurrentResists.Fire + newPiece.CurrentResists.Fire;
+                    suit.CurrentResists.Cold = suit.CurrentResists.Cold - suit.Arms.CurrentResists.Cold + newPiece.CurrentResists.Cold;
+                    suit.CurrentResists.Poison = suit.CurrentResists.Poison - suit.Arms.CurrentResists.Poison + newPiece.CurrentResists.Poison;
+                    suit.CurrentResists.Energy = suit.CurrentResists.Energy - suit.Arms.CurrentResists.Energy + newPiece.CurrentResists.Energy;
                     suit.Arms = newPiece;
                     break;
 
                 case SlotTypes.Gloves:
-                    suit.CurrentResists.PhysicalResist = suit.CurrentResists.PhysicalResist - suit.Gloves.PhysicalResist + newPiece.PhysicalResist;
-                    suit.CurrentResists.FireResist = suit.CurrentResists.FireResist - suit.Gloves.FireResist + newPiece.FireResist;
-                    suit.CurrentResists.ColdResist = suit.CurrentResists.ColdResist - suit.Gloves.ColdResist + newPiece.ColdResist;
-                    suit.CurrentResists.PoisonResist = suit.CurrentResists.PoisonResist - suit.Gloves.PoisonResist + newPiece.PoisonResist;
-                    suit.CurrentResists.EnergyResist = suit.CurrentResists.EnergyResist - suit.Gloves.EnergyResist + newPiece.EnergyResist;
+                    suit.CurrentResists.Physical = suit.CurrentResists.Physical - suit.Gloves.CurrentResists.Physical + newPiece.CurrentResists.Physical;
+                    suit.CurrentResists.Fire = suit.CurrentResists.Fire - suit.Gloves.CurrentResists.Fire + newPiece.CurrentResists.Fire;
+                    suit.CurrentResists.Cold = suit.CurrentResists.Cold - suit.Gloves.CurrentResists.Cold + newPiece.CurrentResists.Cold;
+                    suit.CurrentResists.Poison = suit.CurrentResists.Poison - suit.Gloves.CurrentResists.Poison + newPiece.CurrentResists.Poison;
+                    suit.CurrentResists.Energy = suit.CurrentResists.Energy - suit.Gloves.CurrentResists.Energy + newPiece.CurrentResists.Energy;
                     suit.Gloves = newPiece;
                     break;
 
                 case SlotTypes.Legs:
-                    suit.CurrentResists.PhysicalResist = suit.CurrentResists.PhysicalResist - suit.Legs.PhysicalResist + newPiece.PhysicalResist;
-                    suit.CurrentResists.FireResist = suit.CurrentResists.FireResist - suit.Legs.FireResist + newPiece.FireResist;
-                    suit.CurrentResists.ColdResist = suit.CurrentResists.ColdResist - suit.Legs.ColdResist + newPiece.ColdResist;
-                    suit.CurrentResists.PoisonResist = suit.CurrentResists.PoisonResist - suit.Legs.PoisonResist + newPiece.PoisonResist;
-                    suit.CurrentResists.EnergyResist = suit.CurrentResists.EnergyResist - suit.Legs.EnergyResist + newPiece.EnergyResist;
+                    suit.CurrentResists.Physical = suit.CurrentResists.Physical - suit.Legs.CurrentResists.Physical + newPiece.CurrentResists.Physical;
+                    suit.CurrentResists.Fire = suit.CurrentResists.Fire - suit.Legs.CurrentResists.Fire + newPiece.CurrentResists.Fire;
+                    suit.CurrentResists.Cold = suit.CurrentResists.Cold - suit.Legs.CurrentResists.Cold + newPiece.CurrentResists.Cold;
+                    suit.CurrentResists.Poison = suit.CurrentResists.Poison - suit.Legs.CurrentResists.Poison + newPiece.CurrentResists.Poison;
+                    suit.CurrentResists.Energy = suit.CurrentResists.Energy - suit.Legs.CurrentResists.Energy + newPiece.CurrentResists.Energy;
                     suit.Legs = newPiece;
                     break;
 
