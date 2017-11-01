@@ -1,5 +1,6 @@
 ﻿using ArmorOptimizer.Models;
 using System.Windows.Forms;
+using ArmorOptimizer.Data.Models;
 
 namespace ArmorOptimizer.Forms
 {
@@ -10,24 +11,24 @@ namespace ArmorOptimizer.Forms
             InitializeComponent();
         }
 
-        public void PopulateForm(Resource resource, Armor baseArmor, Armor buffedArmor)
+        public void PopulateForm(Resource resourceViewModel, ArmorViewModel baseArmorViewModel, ArmorViewModel buffedArmorViewModel)
         {
-            cbb_ResourceType.Text = resource.ToString();
-            cb_BonusApplied.Checked = !buffedArmor.NeedsBonus;
+            cbb_ResourceType.Text = resourceViewModel.ToString();
+            cb_BonusApplied.Checked = !buffedArmorViewModel.NeedsBonus;
 
-            num_BasePhysical.Value = baseArmor.CurrentResists.Physical;
-            num_BaseFire.Value = baseArmor.CurrentResists.Fire;
-            num_BaseCold.Value = baseArmor.CurrentResists.Cold;
-            num_BasePoison.Value = baseArmor.CurrentResists.Poison;
-            num_BaseEnergy.Value = baseArmor.CurrentResists.Energy;
+            num_BasePhysical.Value = baseArmorViewModel.CurrentResists.Physical;
+            num_BaseFire.Value = baseArmorViewModel.CurrentResists.Fire;
+            num_BaseCold.Value = baseArmorViewModel.CurrentResists.Cold;
+            num_BasePoison.Value = baseArmorViewModel.CurrentResists.Poison;
+            num_BaseEnergy.Value = baseArmorViewModel.CurrentResists.Energy;
 
-            num_BuffedPhysical.Value = buffedArmor.CurrentResists.Physical;
-            num_BuffedFire.Value = buffedArmor.CurrentResists.Fire;
-            num_BuffedCold.Value = buffedArmor.CurrentResists.Cold;
-            num_BuffedPoison.Value = buffedArmor.CurrentResists.Poison;
-            num_BuffedEnergy.Value = buffedArmor.CurrentResists.Energy;
-            num_LostResists.Value = buffedArmor.LostResistPoints;
-            num_NumberImbues.Value = buffedArmor.ImbueCount;
+            num_BuffedPhysical.Value = buffedArmorViewModel.CurrentResists.Physical;
+            num_BuffedFire.Value = buffedArmorViewModel.CurrentResists.Fire;
+            num_BuffedCold.Value = buffedArmorViewModel.CurrentResists.Cold;
+            num_BuffedPoison.Value = buffedArmorViewModel.CurrentResists.Poison;
+            num_BuffedEnergy.Value = buffedArmorViewModel.CurrentResists.Energy;
+            num_LostResists.Value = buffedArmorViewModel.LostResistPoints;
+            num_NumberImbues.Value = buffedArmorViewModel.ImbueCount;
         }
     }
 }

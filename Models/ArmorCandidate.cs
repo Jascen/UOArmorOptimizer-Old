@@ -2,7 +2,7 @@
 {
     public class ArmorCandidate
     {
-        public Armor Armor { get; set; }
+        public ArmorViewModel ArmorViewModel { get; set; }
         public Candidate ColdCandidate { get; set; }
         public Candidate EnergyCandidate { get; set; }
         public Candidate FireCandidate { get; set; }

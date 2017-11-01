@@ -43,11 +43,11 @@
             this.textBox8 = new System.Windows.Forms.TextBox();
             this.num_MaxIterations = new System.Windows.Forms.NumericUpDown();
             this.dgv_Resources = new System.Windows.Forms.DataGridView();
-            this.dgv_ArmorTypes = new System.Windows.Forms.DataGridView();
             this.dataGridViewTextBoxColumn1 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ResistName = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Color = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ResistId = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.dgv_ArmorTypes = new System.Windows.Forms.DataGridView();
             this.dataGridViewTextBoxColumn2 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ArmorColor = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ArmorSlot = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -225,23 +225,6 @@
             this.dgv_Resources.TabIndex = 103;
             this.dgv_Resources.RowValidating += new System.Windows.Forms.DataGridViewCellCancelEventHandler(this.dgv_Resources_RowValidating);
             // 
-            // dgv_ArmorTypes
-            // 
-            this.dgv_ArmorTypes.AllowUserToResizeColumns = false;
-            this.dgv_ArmorTypes.AllowUserToResizeRows = false;
-            this.dgv_ArmorTypes.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.AllCells;
-            this.dgv_ArmorTypes.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dgv_ArmorTypes.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.dataGridViewTextBoxColumn2,
-            this.ArmorColor,
-            this.ArmorSlot,
-            this.BaseResistConfigurationId});
-            this.dgv_ArmorTypes.Location = new System.Drawing.Point(324, 168);
-            this.dgv_ArmorTypes.Name = "dgv_ArmorTypes";
-            this.dgv_ArmorTypes.Size = new System.Drawing.Size(306, 150);
-            this.dgv_ArmorTypes.TabIndex = 104;
-            this.dgv_ArmorTypes.RowValidating += new System.Windows.Forms.DataGridViewCellCancelEventHandler(this.dgv_ArmorTypes_RowValidating);
-            // 
             // dataGridViewTextBoxColumn1
             // 
             this.dataGridViewTextBoxColumn1.DataPropertyName = "Id";
@@ -278,9 +261,26 @@
             this.ResistId.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
             this.ResistId.Width = 51;
             // 
+            // dgv_ArmorTypes
+            // 
+            this.dgv_ArmorTypes.AllowUserToResizeColumns = false;
+            this.dgv_ArmorTypes.AllowUserToResizeRows = false;
+            this.dgv_ArmorTypes.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.AllCells;
+            this.dgv_ArmorTypes.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgv_ArmorTypes.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.dataGridViewTextBoxColumn2,
+            this.ArmorColor,
+            this.ArmorSlot,
+            this.BaseResistConfigurationId});
+            this.dgv_ArmorTypes.Location = new System.Drawing.Point(324, 168);
+            this.dgv_ArmorTypes.Name = "dgv_ArmorTypes";
+            this.dgv_ArmorTypes.Size = new System.Drawing.Size(306, 150);
+            this.dgv_ArmorTypes.TabIndex = 104;
+            this.dgv_ArmorTypes.RowValidating += new System.Windows.Forms.DataGridViewCellCancelEventHandler(this.dgv_ArmorTypes_RowValidating);
+            // 
             // dataGridViewTextBoxColumn2
             // 
-            this.dataGridViewTextBoxColumn2.DataPropertyName = "Type";
+            this.dataGridViewTextBoxColumn2.DataPropertyName = "ItemType";
             this.dataGridViewTextBoxColumn2.HeaderText = "Type";
             this.dataGridViewTextBoxColumn2.Name = "dataGridViewTextBoxColumn2";
             this.dataGridViewTextBoxColumn2.Resizable = System.Windows.Forms.DataGridViewTriState.False;

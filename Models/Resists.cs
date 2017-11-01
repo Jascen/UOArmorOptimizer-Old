@@ -2,10 +2,10 @@
 {
     public class Resists
     {
-        public int Cold { get; set; }
-        public int Energy { get; set; }
-        public int Fire { get; set; }
-        public int Physical { get; set; }
-        public int Poison { get; set; }
+        public long Cold { get; set; }
+        public long Energy { get; set; }
+        public long Fire { get; set; }
+        public long Physical { get; set; }
+        public long Poison { get; set; }
     }
 }

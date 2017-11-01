@@ -5,89 +5,89 @@ namespace ArmorOptimizer.Extensions
 {
     public static class ArmorExtensions
     {
-        public static Armor Clone(this Armor armorPiece)
+        public static ArmorViewModel Clone(this ArmorViewModel armorViewModelPiece)
         {
-            return new Armor
+            return new ArmorViewModel
             {
-                Id = armorPiece.Id,
-                Slot = armorPiece.Slot,
-                ImbueCount = armorPiece.ImbueCount,
-                LostResistPoints = armorPiece.LostResistPoints,
-                CurrentResists = armorPiece.CurrentResists.Clone(),
-                BaseResists = armorPiece.BaseResists.Clone(),
-                NeedsBonus = armorPiece.NeedsBonus,
-                Locked = armorPiece.Locked,
+                Id = armorViewModelPiece.Id,
+                Slot = armorViewModelPiece.Slot,
+                ImbueCount = armorViewModelPiece.ImbueCount,
+                LostResistPoints = armorViewModelPiece.LostResistPoints,
+                CurrentResists = armorViewModelPiece.CurrentResists.Clone(),
+                BaseResists = armorViewModelPiece.BaseResists.Clone(),
+                NeedsBonus = armorViewModelPiece.NeedsBonus,
+                Locked = armorViewModelPiece.Locked,
             };
         }
 
-        public static void EvaluateImbuedResists(this Armor armor, int maxResistImbuePoints)
+        public static void EvaluateImbuedResists(this ArmorViewModel armorViewModel, long maxResistImbuePoints)
         {
-            armor.ImbueCount = 0;
-            armor.LostResistPoints = 0;
+            armorViewModel.ImbueCount = 0;
+            armorViewModel.LostResistPoints = 0;
 
-            var physicalMax = armor.BaseResists.Physical + maxResistImbuePoints;
-            if (armor.CurrentResists.Physical >= physicalMax)
+            var physicalMax = armorViewModel.BaseResists.Physical + maxResistImbuePoints;
+            if (armorViewModel.CurrentResists.Physical >= physicalMax)
             {
-                var idealMax = armor.CurrentResists.Physical + maxResistImbuePoints;
-                if (idealMax < physicalMax) throw new ArgumentException($"{armor.Slot} '{armor.Id}' does not have correct base material selected.");
+                var idealMax = armorViewModel.CurrentResists.Physical + maxResistImbuePoints;
+                if (idealMax < physicalMax) throw new ArgumentException($"{armorViewModel.Slot} '{armorViewModel.Id}' does not have correct base material selected.");
 
-                armor.CurrentResists.Physical = Math.Min(idealMax, physicalMax);
-                armor.LostResistPoints += idealMax - physicalMax;
-                armor.ImbueCount++;
+                armorViewModel.CurrentResists.Physical = Math.Min(idealMax, physicalMax);
+                armorViewModel.LostResistPoints += idealMax - physicalMax;
+                armorViewModel.ImbueCount++;
             }
 
-            var fireMax = armor.BaseResists.Fire + maxResistImbuePoints;
-            if (armor.CurrentResists.Fire >= fireMax)
+            var fireMax = armorViewModel.BaseResists.Fire + maxResistImbuePoints;
+            if (armorViewModel.CurrentResists.Fire >= fireMax)
             {
-                var idealMax = armor.CurrentResists.Fire + maxResistImbuePoints;
-                if (idealMax < fireMax) throw new ArgumentException($"{armor.Slot} '{armor.Id}' does not have correct base material selected.");
+                var idealMax = armorViewModel.CurrentResists.Fire + maxResistImbuePoints;
+                if (idealMax < fireMax) throw new ArgumentException($"{armorViewModel.Slot} '{armorViewModel.Id}' does not have correct base material selected.");
 
-                armor.CurrentResists.Fire = Math.Min(idealMax, fireMax);
-                armor.LostResistPoints += idealMax - fireMax;
-                armor.ImbueCount++;
+                armorViewModel.CurrentResists.Fire = Math.Min(idealMax, fireMax);
+                armorViewModel.LostResistPoints += idealMax - fireMax;
+                armorViewModel.ImbueCount++;
             }
 
-            var coldMax = armor.BaseResists.Cold + maxResistImbuePoints;
-            if (armor.CurrentResists.Cold >= coldMax)
+            var coldMax = armorViewModel.BaseResists.Cold + maxResistImbuePoints;
+            if (armorViewModel.CurrentResists.Cold >= coldMax)
             {
-                var idealMax = armor.CurrentResists.Cold + maxResistImbuePoints;
-                if (idealMax < coldMax) throw new ArgumentException($"{armor.Slot} '{armor.Id}' does not have correct base material selected.");
+                var idealMax = armorViewModel.CurrentResists.Cold + maxResistImbuePoints;
+                if (idealMax < coldMax) throw new ArgumentException($"{armorViewModel.Slot} '{armorViewModel.Id}' does not have correct base material selected.");
 
-                armor.CurrentResists.Cold = Math.Min(idealMax, coldMax);
-                armor.LostResistPoints += idealMax - coldMax;
-                armor.ImbueCount++;
+                armorViewModel.CurrentResists.Cold = Math.Min(idealMax, coldMax);
+                armorViewModel.LostResistPoints += idealMax - coldMax;
+                armorViewModel.ImbueCount++;
             }
 
-            var poisonMax = armor.BaseResists.Poison + maxResistImbuePoints;
-            if (armor.CurrentResists.Poison >= poisonMax)
+            var poisonMax = armorViewModel.BaseResists.Poison + maxResistImbuePoints;
+            if (armorViewModel.CurrentResists.Poison >= poisonMax)
             {
-                var idealMax = armor.CurrentResists.Poison + maxResistImbuePoints;
-                if (idealMax < poisonMax) throw new ArgumentException($"{armor.Slot} '{armor.Id}' does not have correct base material selected.");
+                var idealMax = armorViewModel.CurrentResists.Poison + maxResistImbuePoints;
+                if (idealMax < poisonMax) throw new ArgumentException($"{armorViewModel.Slot} '{armorViewModel.Id}' does not have correct base material selected.");
 
-                armor.CurrentResists.Poison = Math.Min(idealMax, poisonMax);
-                armor.LostResistPoints += idealMax - poisonMax;
-                armor.ImbueCount++;
+                armorViewModel.CurrentResists.Poison = Math.Min(idealMax, poisonMax);
+                armorViewModel.LostResistPoints += idealMax - poisonMax;
+                armorViewModel.ImbueCount++;
             }
 
-            var energyMax = armor.BaseResists.Energy + maxResistImbuePoints;
-            if (armor.CurrentResists.Energy >= energyMax)
+            var energyMax = armorViewModel.BaseResists.Energy + maxResistImbuePoints;
+            if (armorViewModel.CurrentResists.Energy >= energyMax)
             {
-                var idealMax = armor.CurrentResists.Energy + maxResistImbuePoints;
-                if (idealMax < energyMax) throw new ArgumentException($"{armor.Slot} '{armor.Id}' does not have correct base material selected.");
+                var idealMax = armorViewModel.CurrentResists.Energy + maxResistImbuePoints;
+                if (idealMax < energyMax) throw new ArgumentException($"{armorViewModel.Slot} '{armorViewModel.Id}' does not have correct base material selected.");
 
-                armor.CurrentResists.Energy = Math.Min(idealMax, energyMax);
-                armor.LostResistPoints += idealMax - energyMax;
-                armor.ImbueCount++;
+                armorViewModel.CurrentResists.Energy = Math.Min(idealMax, energyMax);
+                armorViewModel.LostResistPoints += idealMax - energyMax;
+                armorViewModel.ImbueCount++;
             }
         }
 
-        public static int TotalResists(this Armor armor)
+        public static long TotalResists(this ArmorViewModel armorViewModel)
         {
-            return armor.CurrentResists.Physical
-                + armor.CurrentResists.Fire
-                + armor.CurrentResists.Cold
-                + armor.CurrentResists.Poison
-                + armor.CurrentResists.Energy;
+            return armorViewModel.CurrentResists.Physical
+                + armorViewModel.CurrentResists.Fire
+                + armorViewModel.CurrentResists.Cold
+                + armorViewModel.CurrentResists.Poison
+                + armorViewModel.CurrentResists.Energy;
         }
     }
 }

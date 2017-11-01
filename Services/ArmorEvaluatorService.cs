@@ -6,43 +6,43 @@ namespace ArmorOptimizer.Services
 {
     public class ArmorEvaluatorService
     {
-        private readonly Armor _baseArmor;
+        private readonly ArmorViewModel _baseArmorViewModel;
         private readonly Resists _maxImbueables;
         private readonly int _maxResistBonus;
 
-        public ArmorEvaluatorService(Armor armor, int maxResistBonus)
+        public ArmorEvaluatorService(ArmorViewModel armorViewModel, int maxResistBonus)
         {
-            if (armor == null) throw new ArgumentNullException(nameof(armor));
+            if (armorViewModel == null) throw new ArgumentNullException(nameof(armorViewModel));
 
-            PhysicalLowest = armor.CurrentResists.Physical <= armor.CurrentResists.Fire
-                          && armor.CurrentResists.Physical <= armor.CurrentResists.Cold
-                          && armor.CurrentResists.Physical <= armor.CurrentResists.Poison
-                          && armor.CurrentResists.Physical <= armor.CurrentResists.Energy;
-            FireLowest = armor.CurrentResists.Fire <= armor.CurrentResists.Physical
-                         && armor.CurrentResists.Fire <= armor.CurrentResists.Cold
-                         && armor.CurrentResists.Fire <= armor.CurrentResists.Poison
-                         && armor.CurrentResists.Fire <= armor.CurrentResists.Energy;
-            ColdLowest = armor.CurrentResists.Cold <= armor.CurrentResists.Fire
-                         && armor.CurrentResists.Cold <= armor.CurrentResists.Physical
-                         && armor.CurrentResists.Cold <= armor.CurrentResists.Poison
-                         && armor.CurrentResists.Cold <= armor.CurrentResists.Energy;
-            PoisonLowest = armor.CurrentResists.Poison <= armor.CurrentResists.Fire
-                         && armor.CurrentResists.Poison <= armor.CurrentResists.Cold
-                         && armor.CurrentResists.Poison <= armor.CurrentResists.Physical
-                         && armor.CurrentResists.Poison <= armor.CurrentResists.Energy;
-            EnergyLowest = armor.CurrentResists.Energy <= armor.CurrentResists.Fire
-                         && armor.CurrentResists.Energy <= armor.CurrentResists.Cold
-                         && armor.CurrentResists.Energy <= armor.CurrentResists.Poison
-                         && armor.CurrentResists.Energy <= armor.CurrentResists.Physical;
-            _baseArmor = armor;
+            PhysicalLowest = armorViewModel.CurrentResists.Physical <= armorViewModel.CurrentResists.Fire
+                          && armorViewModel.CurrentResists.Physical <= armorViewModel.CurrentResists.Cold
+                          && armorViewModel.CurrentResists.Physical <= armorViewModel.CurrentResists.Poison
+                          && armorViewModel.CurrentResists.Physical <= armorViewModel.CurrentResists.Energy;
+            FireLowest = armorViewModel.CurrentResists.Fire <= armorViewModel.CurrentResists.Physical
+                         && armorViewModel.CurrentResists.Fire <= armorViewModel.CurrentResists.Cold
+                         && armorViewModel.CurrentResists.Fire <= armorViewModel.CurrentResists.Poison
+                         && armorViewModel.CurrentResists.Fire <= armorViewModel.CurrentResists.Energy;
+            ColdLowest = armorViewModel.CurrentResists.Cold <= armorViewModel.CurrentResists.Fire
+                         && armorViewModel.CurrentResists.Cold <= armorViewModel.CurrentResists.Physical
+                         && armorViewModel.CurrentResists.Cold <= armorViewModel.CurrentResists.Poison
+                         && armorViewModel.CurrentResists.Cold <= armorViewModel.CurrentResists.Energy;
+            PoisonLowest = armorViewModel.CurrentResists.Poison <= armorViewModel.CurrentResists.Fire
+                         && armorViewModel.CurrentResists.Poison <= armorViewModel.CurrentResists.Cold
+                         && armorViewModel.CurrentResists.Poison <= armorViewModel.CurrentResists.Physical
+                         && armorViewModel.CurrentResists.Poison <= armorViewModel.CurrentResists.Energy;
+            EnergyLowest = armorViewModel.CurrentResists.Energy <= armorViewModel.CurrentResists.Fire
+                         && armorViewModel.CurrentResists.Energy <= armorViewModel.CurrentResists.Cold
+                         && armorViewModel.CurrentResists.Energy <= armorViewModel.CurrentResists.Poison
+                         && armorViewModel.CurrentResists.Energy <= armorViewModel.CurrentResists.Physical;
+            _baseArmorViewModel = armorViewModel;
             _maxResistBonus = maxResistBonus;
             _maxImbueables = new Resists
             {
-                Physical = armor.BaseResists.Physical + maxResistBonus,
-                Fire = armor.BaseResists.Fire + maxResistBonus,
-                Cold = armor.BaseResists.Cold + maxResistBonus,
-                Poison = armor.BaseResists.Poison + maxResistBonus,
-                Energy = armor.BaseResists.Energy + maxResistBonus,
+                Physical = armorViewModel.BaseResists.Physical + maxResistBonus,
+                Fire = armorViewModel.BaseResists.Fire + maxResistBonus,
+                Cold = armorViewModel.BaseResists.Cold + maxResistBonus,
+                Poison = armorViewModel.BaseResists.Poison + maxResistBonus,
+                Energy = armorViewModel.BaseResists.Energy + maxResistBonus,
             };
         }
 
@@ -52,9 +52,9 @@ namespace ArmorOptimizer.Services
         public bool PhysicalLowest { get; }
         public bool PoisonLowest { get; }
 
-        public Armor ImbueCold()
+        public ArmorViewModel ImbueCold()
         {
-            var armor = _baseArmor.Clone();
+            var armor = _baseArmorViewModel.Clone();
             var idealMax = armor.CurrentResists.Cold + _maxResistBonus;
             if (idealMax < _maxImbueables.Cold) throw new ArgumentException($"{armor.Slot} '{armor.Id}' does not have correct base material selected.");
 
@@ -65,9 +65,9 @@ namespace ArmorOptimizer.Services
             return armor;
         }
 
-        public Armor ImbueEnergy()
+        public ArmorViewModel ImbueEnergy()
         {
-            var armor = _baseArmor.Clone();
+            var armor = _baseArmorViewModel.Clone();
             var idealMax = armor.CurrentResists.Energy + _maxResistBonus;
             if (idealMax < _maxImbueables.Energy) throw new ArgumentException($"{armor.Slot} '{armor.Id}' does not have correct base material selected.");
 
@@ -78,9 +78,9 @@ namespace ArmorOptimizer.Services
             return armor;
         }
 
-        public Armor ImbueFire()
+        public ArmorViewModel ImbueFire()
         {
-            var armor = _baseArmor.Clone();
+            var armor = _baseArmorViewModel.Clone();
             var idealMax = armor.CurrentResists.Fire + _maxResistBonus;
             if (idealMax < _maxImbueables.Fire) throw new ArgumentException($"{armor.Slot} '{armor.Id}' does not have correct base material selected.");
 
@@ -91,9 +91,9 @@ namespace ArmorOptimizer.Services
             return armor;
         }
 
-        public Armor ImbuePhysical()
+        public ArmorViewModel ImbuePhysical()
         {
-            var armor = _baseArmor.Clone();
+            var armor = _baseArmorViewModel.Clone();
             var idealMax = armor.CurrentResists.Physical + _maxResistBonus;
             if (idealMax < _maxImbueables.Physical) throw new ArgumentException($"{armor.Slot} '{armor.Id}' does not have correct base material selected.");
 
@@ -104,9 +104,9 @@ namespace ArmorOptimizer.Services
             return armor;
         }
 
-        public Armor ImbuePoison()
+        public ArmorViewModel ImbuePoison()
         {
-            var armor = _baseArmor.Clone();
+            var armor = _baseArmorViewModel.Clone();
             var idealMax = armor.CurrentResists.Poison + _maxResistBonus;
             if (idealMax < _maxImbueables.Poison) throw new ArgumentException($"{armor.Slot} '{armor.Id}' does not have correct base material selected.");
 

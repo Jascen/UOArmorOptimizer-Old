@@ -1,4 +1,5 @@
-﻿using ArmorOptimizer.Enums;
+﻿using ArmorOptimizer.Data.Models;
+using ArmorOptimizer.Enums;
 using ArmorOptimizer.Extensions;
 using ArmorOptimizer.Models;
 using System;
@@ -10,11 +11,11 @@ namespace ArmorOptimizer.Forms
 {
     public partial class ConfigurationEditor : Form
     {
-        public ConfigurationEditor() : this(new List<ResistConfiguration>(), new List<ResourceRecord>(), new List<ArmorRecord>())
+        public ConfigurationEditor() : this(new List<ResistConfiguration>(), new List<Resource>(), new List<ItemViewModel>())
         {
         }
 
-        public ConfigurationEditor(IEnumerable<ResistConfiguration> resistConfigurations, IEnumerable<ResourceRecord> resources, IEnumerable<ArmorRecord> armorTypes)
+        public ConfigurationEditor(IEnumerable<ResistConfiguration> resistConfigurations, IEnumerable<Resource> resources, IEnumerable<ItemViewModel> armorTypes)
         {
             InitializeComponent();
             ResistConfigurations = resistConfigurations.ToEnumeratedList();
@@ -30,9 +31,9 @@ namespace ArmorOptimizer.Forms
             };
         }
 
-        public IList<ArmorRecord> ArmorTypes { get; }
+        public IList<ItemViewModel> ArmorTypes { get; }
         public IList<ResistConfiguration> ResistConfigurations { get; }
-        public IList<ResourceRecord> Resources { get; }
+        public IList<Resource> Resources { get; }
         public IList<SlotTypes> SupportedSlotTypes { get; }
 
         private void ArmorTypesErrorHandler(object sender, DataGridViewDataErrorEventArgs e)
@@ -63,7 +64,7 @@ namespace ArmorOptimizer.Forms
             if (((DataGridView)sender).Rows[e.RowIndex].IsNewRow) return;
             if (!((DataGridView)sender).IsCurrentRowDirty) return;
 
-            var armorRecord = (ArmorRecord)((DataGridView)sender).Rows[e.RowIndex].DataBoundItem;
+            var armorRecord = (ItemViewModel)((DataGridView)sender).Rows[e.RowIndex].DataBoundItem;
 
             // Constraint: Must be explicit slot
             if (armorRecord.Slot == SlotTypes.Unknown)
@@ -87,9 +88,9 @@ namespace ArmorOptimizer.Forms
             }
 
             // Foreign Key: Resist Id must exist
-            if (ResistConfigurations.All(c => c.Id != armorRecord.BaseResistConfigurationId))
+            if (ResistConfigurations.All(c => c.Id != armorRecord.BaseResistId))
             {
-                MessageBox.Show($@"The Resist Id '{armorRecord.BaseResistConfigurationId}' does not exist.");
+                MessageBox.Show($@"The Resist Id '{armorRecord.BaseResistId}' does not exist.");
                 e.Cancel = true;
             }
         }
@@ -133,7 +134,7 @@ namespace ArmorOptimizer.Forms
             if (!((DataGridView)sender).IsCurrentRowDirty) return;
 
             // Constraint: Id must be > 0
-            var resourceRecord = (ResourceRecord)((DataGridView)sender).Rows[e.RowIndex].DataBoundItem;
+            var resourceRecord = (Resource)((DataGridView)sender).Rows[e.RowIndex].DataBoundItem;
             if (resourceRecord.Id < 1)
             {
                 MessageBox.Show("The Id must be greater than 0.");
@@ -148,15 +149,15 @@ namespace ArmorOptimizer.Forms
             }
 
             // Foreign Key
-            if (ResistConfigurations.All(c => c.Id != resourceRecord.BonusResistConfigurationId))
+            if (ResistConfigurations.All(c => c.Id != resourceRecord.ResistId))
             {
-                MessageBox.Show($"The Resist Id '{resourceRecord.BonusResistConfigurationId}' does not exist.");
+                MessageBox.Show($"The Resist Id '{resourceRecord.ResistId}' does not exist.");
                 e.Cancel = true;
                 return;
             }
 
             // Primary Key
-            if (Resources.Count(c => c.BonusResistConfigurationId == resourceRecord.BonusResistConfigurationId) > 1)
+            if (Resources.Count(c => c.ResistId == resourceRecord.ResistId) > 1)
             {
                 MessageBox.Show("This configuration already exists!");
                 e.Cancel = true;

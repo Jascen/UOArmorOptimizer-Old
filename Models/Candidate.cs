@@ -4,6 +4,6 @@
     {
         public bool OverMax { get; set; }
         public bool UnderMax { get; set; }
-        public int Value { get; set; }
+        public long Value { get; set; }
     }
 }

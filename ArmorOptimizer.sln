@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.26730.16
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArmorOptimizer", "ArmorOptimizer.csproj", "{7FA99062-E230-4A59-BA08-D79DB91395F9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArmorOptimizer.Data", "..\ArmorOptimizer.Data\ArmorOptimizer.Data.csproj", "{67C0DCC0-B1AA-4B52-8C7C-A67D8591C219}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{7FA99062-E230-4A59-BA08-D79DB91395F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7FA99062-E230-4A59-BA08-D79DB91395F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7FA99062-E230-4A59-BA08-D79DB91395F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{67C0DCC0-B1AA-4B52-8C7C-A67D8591C219}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{67C0DCC0-B1AA-4B52-8C7C-A67D8591C219}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{67C0DCC0-B1AA-4B52-8C7C-A67D8591C219}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{67C0DCC0-B1AA-4B52-8C7C-A67D8591C219}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
